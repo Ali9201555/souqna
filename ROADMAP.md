@@ -61,7 +61,7 @@ verification gate and git workflow.
 
 - [ ] Brand assets: app icon + splash in Souqna green (`#0E8F6E`), replace Expo
       template art; set splash `backgroundColor` to brand
-- [ ] EAS Build profiles (preview + production) for iOS & Android
+- [x] EAS Build profiles (preview + production) for iOS & Android
 - [ ] Store listings in Arabic (screenshots, description, keywords)
 - [ ] Kurdish (Sorani) translation review by a native speaker
 - [ ] Analytics + crash reporting; performance pass on large lists
