@@ -92,6 +92,16 @@ const en = {
   saved_browse: 'Browse listings',
   saved_count: '{count} saved',
 
+  home_discover: 'Discover',
+  home_discoverHint: 'Swipe to save what you love',
+  discover_title: 'Discover',
+  discover_save: 'Save',
+  discover_skip: 'Skip',
+  discover_hint: 'Swipe right to save · left to skip',
+  discover_empty: 'You’re all caught up',
+  discover_emptyHint: 'You’ve seen every listing. Check back later for new finds.',
+  discover_seeSaved: 'See saved',
+
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
@@ -194,6 +204,16 @@ const ar: Partial<Record<TKey, string>> = {
   saved_browse: 'تصفّح الإعلانات',
   saved_count: '{count} محفوظ',
 
+  home_discover: 'اكتشف',
+  home_discoverHint: 'مرّر لحفظ ما يعجبك',
+  discover_title: 'اكتشف',
+  discover_save: 'حفظ',
+  discover_skip: 'تخطّي',
+  discover_hint: 'مرّر يميناً للحفظ · يساراً للتخطّي',
+  discover_empty: 'شاهدت كل الإعلانات',
+  discover_emptyHint: 'لقد اطّلعت على كل الإعلانات. عُد لاحقاً لاكتشاف الجديد.',
+  discover_seeSaved: 'عرض المحفوظة',
+
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
@@ -261,6 +281,13 @@ const ku: Partial<Record<TKey, string>> = {
   profile_favorites: 'پاشەکەوتکراوەکان',
   saved_empty: 'هێشتا هیچ ڕیکلامێکی پاشەکەوتکراو نییە',
   saved_browse: 'گەڕان بە ڕیکلامەکاندا',
+
+  home_discover: 'دۆزینەوە',
+  discover_title: 'دۆزینەوە',
+  discover_save: 'پاشەکەوت',
+  discover_skip: 'تێپەڕاندن',
+  discover_empty: 'هەمووت بینی',
+  discover_seeSaved: 'پاشەکەوتکراوەکان',
 
   lang_ar: 'العربية',
   lang_ku: 'کوردی',

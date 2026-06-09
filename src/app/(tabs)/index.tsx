@@ -37,6 +37,27 @@ function HomeHeader() {
         </ThemedText>
       </Pressable>
 
+      <Pressable
+        onPress={() => router.push('/discover')}
+        style={({ pressed }) => [
+          styles.discover,
+          { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' },
+          pressed && styles.pressed,
+        ]}>
+        <View style={styles.discoverIcon}>
+          <Ionicons name="sparkles" size={20} color={theme.onTint} />
+        </View>
+        <View style={styles.flex}>
+          <ThemedText style={[styles.discoverTitle, { color: theme.onTint, textAlign: align }]}>
+            {t('home_discover')}
+          </ThemedText>
+          <ThemedText type="small" style={[styles.discoverSub, { color: theme.onTint, textAlign: align }]}>
+            {t('home_discoverHint')}
+          </ThemedText>
+        </View>
+        <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={20} color={theme.onTint} />
+      </Pressable>
+
       <CategoryStrip />
 
       <ThemedText style={[styles.section, { textAlign: align }]}>{t('home_latest')}</ThemedText>
@@ -81,6 +102,25 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   searchText: { flex: 1 },
+  discover: {
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.one,
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.lg,
+  },
+  discoverIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  discoverTitle: { fontSize: 16, fontWeight: '800' },
+  discoverSub: { opacity: 0.9 },
+  pressed: { opacity: 0.85 },
   section: { fontSize: 18, fontWeight: '700', paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
   column: { gap: Spacing.three, paddingHorizontal: Spacing.three },
   content: { gap: Spacing.three, paddingBottom: Spacing.five },

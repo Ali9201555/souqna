@@ -22,6 +22,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="listing/[id]" options={{ headerShown: true }} />
                 <Stack.Screen name="saved" options={{ headerShown: true }} />
+                <Stack.Screen name="discover" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style="auto" />
             </ListingsProvider>
