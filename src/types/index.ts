@@ -16,6 +16,7 @@ export interface Governorate {
 }
 
 export type ListingCondition = 'new' | 'used';
+export type ReportReason = 'spam' | 'fraud' | 'prohibited' | 'duplicate' | 'other';
 
 export interface SellerProfile {
   id: string;
@@ -54,4 +55,13 @@ export interface ChatThread {
   lastMessage: string;
   lastAt: number;
   unread: number;
+}
+
+export interface ListingReport {
+  id: string;
+  listingId: string;
+  reporterId: string;
+  reason: ReportReason;
+  /** Epoch milliseconds. */
+  createdAt: number;
 }

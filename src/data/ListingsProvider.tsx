@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
-import type { ChatThread, Listing, SellerProfile } from '@/types';
+import type { ChatThread, Listing, ListingReport, ReportReason, SellerProfile } from '@/types';
 
 /**
  * Fields the seller fills in when posting. id/createdAt/sellerId are assigned
@@ -15,11 +15,14 @@ type ListingsContextValue = {
   listings: Listing[];
   threads: ChatThread[];
   favorites: string[];
+  reports: ListingReport[];
   currentUserId: string;
   myListings: Listing[];
   addListing: (input: NewListingInput) => Listing;
   getListing: (id: string) => Listing | undefined;
   getSeller: (id: string) => SellerProfile | undefined;
+  reportListing: (listingId: string, reason: ReportReason) => ListingReport;
+  hasReportedListing: (listingId: string) => boolean;
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
 };
@@ -28,6 +31,7 @@ const ListingsContext = createContext<ListingsContextValue | null>(null);
 
 const LOCAL_LISTINGS_KEY = 'souqna.localListings';
 const FAVORITES_KEY = 'souqna.favorites';
+const REPORTS_KEY = 'souqna.reports';
 
 const byNewest = (a: Listing, b: Listing) => b.createdAt - a.createdAt;
 
@@ -70,20 +74,48 @@ function parseFavorites(raw: string | null): string[] {
   }
 }
 
+function isReport(value: unknown): value is ListingReport {
+  if (value == null || typeof value !== 'object') return false;
+  const report = value as Partial<ListingReport>;
+  return (
+    typeof report.id === 'string' &&
+    typeof report.listingId === 'string' &&
+    typeof report.reporterId === 'string' &&
+    (report.reason === 'spam' ||
+      report.reason === 'fraud' ||
+      report.reason === 'prohibited' ||
+      report.reason === 'duplicate' ||
+      report.reason === 'other') &&
+    typeof report.createdAt === 'number'
+  );
+}
+
+function parseReports(raw: string | null): ListingReport[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isReport).sort((a, b) => b.createdAt - a.createdAt) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function ListingsProvider({ children }: { children: ReactNode }) {
   const [localListings, setLocalListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [reports, setReports] = useState<ListingReport[]>([]);
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([AsyncStorage.getItem(LOCAL_LISTINGS_KEY), AsyncStorage.getItem(FAVORITES_KEY)])
-      .then(([storedListings, storedFavorites]) => {
+    Promise.all([AsyncStorage.getItem(LOCAL_LISTINGS_KEY), AsyncStorage.getItem(FAVORITES_KEY), AsyncStorage.getItem(REPORTS_KEY)])
+      .then(([storedListings, storedFavorites, storedReports]) => {
         if (!isMounted) return;
         setLocalListings(parseLocalListings(storedListings));
         setFavorites(parseFavorites(storedFavorites));
+        setReports(parseReports(storedReports));
       })
       .finally(() => {
         if (isMounted) setHasLoadedStorage(true);
@@ -103,6 +135,11 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     if (!hasLoadedStorage) return;
     AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)).catch(() => undefined);
   }, [hasLoadedStorage, favorites]);
+
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(reports)).catch(() => undefined);
+  }, [hasLoadedStorage, reports]);
 
   const listings = useMemo(() => [...localListings, ...SEED_LISTINGS].sort(byNewest), [localListings]);
 
@@ -132,6 +169,29 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
 
+  const reportListing = useCallback(
+    (listingId: string, reason: ReportReason) => {
+      const existing = reports.find((report) => report.listingId === listingId && report.reporterId === DEMO_USER_ID);
+      if (existing) return existing;
+
+      const report: ListingReport = {
+        id: `report-${Date.now()}`,
+        listingId,
+        reporterId: DEMO_USER_ID,
+        reason,
+        createdAt: Date.now(),
+      };
+      setReports((prev) => [report, ...prev]);
+      return report;
+    },
+    [reports],
+  );
+
+  const hasReportedListing = useCallback(
+    (listingId: string) => reports.some((report) => report.listingId === listingId && report.reporterId === DEMO_USER_ID),
+    [reports],
+  );
+
   const myListings = useMemo(
     () => listings.filter((l) => l.sellerId === DEMO_USER_ID),
     [listings],
@@ -142,15 +202,31 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       listings,
       threads,
       favorites,
+      reports,
       currentUserId: DEMO_USER_ID,
       myListings,
       addListing,
       getListing,
       getSeller,
+      reportListing,
+      hasReportedListing,
       toggleFavorite,
       isFavorite,
     }),
-    [listings, threads, favorites, myListings, addListing, getListing, getSeller, toggleFavorite, isFavorite],
+    [
+      listings,
+      threads,
+      favorites,
+      reports,
+      myListings,
+      addListing,
+      getListing,
+      getSeller,
+      reportListing,
+      hasReportedListing,
+      toggleFavorite,
+      isFavorite,
+    ],
   );
 
   return <ListingsContext value={value}>{children}</ListingsContext>;

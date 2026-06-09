@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -24,17 +25,25 @@ import { useListings } from '@/data/ListingsProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { formatPrice, formatRelativeTime } from '@/lib/format';
+import type { ReportReason } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+const REPORT_REASONS: ReportReason[] = ['spam', 'fraud', 'prohibited', 'duplicate', 'other'];
+
+function isReportReason(value: string | null): value is ReportReason {
+  return value === 'spam' || value === 'fraud' || value === 'prohibited' || value === 'duplicate' || value === 'other';
+}
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getListing, getSeller, isFavorite, toggleFavorite } = useListings();
+  const { getListing, getSeller, hasReportedListing, isFavorite, reportListing, toggleFavorite } = useListings();
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [activeImage, setActiveImage] = useState(0);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [showReportThanks, setShowReportThanks] = useState(false);
 
   const align = isRTL ? 'right' : 'left';
   const rowDir = isRTL ? 'row-reverse' : 'row';
@@ -59,8 +68,17 @@ export default function ListingDetailScreen() {
   const category = getCategory(listing.categoryId);
   const gov = getGovernorate(listing.governorateId);
   const fav = isFavorite(listing.id);
+  const hasReported = hasReportedListing(listing.id);
   const priceText =
     listing.priceIqd > 0 ? formatPrice(listing.priceIqd, t('common_currency')) : t('contactForPrice');
+  const reportLabels: Record<ReportReason, string> = {
+    spam: t('report_reason_spam'),
+    fraud: t('report_reason_fraud'),
+    prohibited: t('report_reason_prohibited'),
+    duplicate: t('report_reason_duplicate'),
+    other: t('report_reason_other'),
+  };
+  const reportOptions: PickerOption[] = REPORT_REASONS.map((reason) => ({ id: reason, label: reportLabels[reason] }));
 
   const onImageScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
@@ -203,12 +221,25 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
-          <Pressable style={[styles.reportRow, { flexDirection: rowDir }]}>
-            <Ionicons name="flag-outline" size={16} color={theme.textSecondary} />
-            <ThemedText type="small" themeColor="textSecondary">
-              {t('detail_report')}
+          <Pressable
+            onPress={() => {
+              if (hasReported) {
+                setShowReportThanks(true);
+              } else {
+                setReportSheetVisible(true);
+              }
+            }}
+            style={[styles.reportRow, { flexDirection: rowDir }]}>
+            <Ionicons name={hasReported ? 'checkmark-circle-outline' : 'flag-outline'} size={16} color={hasReported ? theme.success : theme.textSecondary} />
+            <ThemedText type="small" themeColor={hasReported ? 'success' : 'textSecondary'}>
+              {hasReported ? t('detail_reported') : t('detail_report')}
             </ThemedText>
           </Pressable>
+          {showReportThanks && (
+            <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
+              {t('detail_reportThanks')}
+            </ThemedText>
+          )}
         </View>
       </ScrollView>
 
@@ -224,6 +255,20 @@ export default function ListingDetailScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      <PickerSheet
+        visible={reportSheetVisible}
+        title={t('detail_report')}
+        options={reportOptions}
+        selectedId={null}
+        onSelect={(reason) => {
+          if (isReportReason(reason)) {
+            reportListing(listing.id, reason);
+            setShowReportThanks(true);
+          }
+        }}
+        onClose={() => setReportSheetVisible(false)}
+      />
     </ThemedView>
   );
 }
