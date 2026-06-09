@@ -94,6 +94,7 @@ const en = {
 
   home_discover: 'Discover',
   home_discoverHint: 'Swipe to save what you love',
+  home_spotlight: 'Featured',
   discover_title: 'Discover',
   discover_save: 'Save',
   discover_skip: 'Skip',
@@ -206,6 +207,7 @@ const ar: Partial<Record<TKey, string>> = {
 
   home_discover: 'اكتشف',
   home_discoverHint: 'مرّر لحفظ ما يعجبك',
+  home_spotlight: 'مميّزة',
   discover_title: 'اكتشف',
   discover_save: 'حفظ',
   discover_skip: 'تخطّي',
@@ -283,6 +285,7 @@ const ku: Partial<Record<TKey, string>> = {
   saved_browse: 'گەڕان بە ڕیکلامەکاندا',
 
   home_discover: 'دۆزینەوە',
+  home_spotlight: 'تایبەت',
   discover_title: 'دۆزینەوە',
   discover_save: 'پاشەکەوت',
   discover_skip: 'تێپەڕاندن',

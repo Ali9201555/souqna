@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryStrip } from '@/components/category-strip';
 import { ListingCard } from '@/components/listing-card';
+import { Spotlight } from '@/components/spotlight';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -57,6 +58,8 @@ function HomeHeader() {
         </View>
         <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={20} color={theme.onTint} />
       </Pressable>
+
+      <Spotlight />
 
       <CategoryStrip />
 
