@@ -12,17 +12,18 @@ import { useListings } from '@/data/ListingsProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { formatPrice } from '@/lib/format';
-import type { Language } from '@/types';
+import type { Language, Listing } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function ProfileScreen() {
-  const { myListings } = useListings();
+  const { favorites, getListing, myListings } = useListings();
   const { t, lang, setLang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
   const align = isRTL ? 'right' : 'left';
   const [showSoon, setShowSoon] = useState(false);
+  const savedListings = favorites.map(getListing).filter((listing): listing is Listing => listing != null);
 
   const langs: { id: Language; label: string }[] = [
     { id: 'ar', label: t('lang_ar') },
@@ -77,6 +78,25 @@ export default function ProfileScreen() {
           </View>
         </Section>
 
+        <Section title={t('profile_favorites')} align={align}>
+          {savedListings.length === 0 ? (
+            <Pressable
+              onPress={() => router.push('/search')}
+              style={[styles.emptyMine, { borderColor: theme.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="heart-outline" size={20} color={theme.tint} />
+              <ThemedText type="small" themeColor="tint">
+                {t('profile_noFavorites')}
+              </ThemedText>
+            </Pressable>
+          ) : (
+            <View style={styles.mineList}>
+              {savedListings.map((listing) => (
+                <ListingRow key={listing.id} listing={listing} />
+              ))}
+            </View>
+          )}
+        </Section>
+
         <Section title={t('profile_myListings')} align={align}>
           {myListings.length === 0 ? (
             <Pressable
@@ -92,21 +112,8 @@ export default function ProfileScreen() {
               <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
                 {t('profile_listingsCount', { count: myListings.length })}
               </ThemedText>
-              {myListings.map((l) => (
-                <Pressable
-                  key={l.id}
-                  onPress={() => router.push({ pathname: '/listing/[id]', params: { id: l.id } })}
-                  style={[styles.mineRow, { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                  <Image source={{ uri: l.images[0] }} style={styles.mineThumb} contentFit="cover" />
-                  <View style={styles.flex}>
-                    <ThemedText numberOfLines={1} style={{ textAlign: align, fontWeight: '600' }}>
-                      {l.title}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="price" style={{ textAlign: align }}>
-                      {l.priceIqd > 0 ? formatPrice(l.priceIqd, t('common_currency')) : t('contactForPrice')}
-                    </ThemedText>
-                  </View>
-                </Pressable>
+              {myListings.map((listing) => (
+                <ListingRow key={listing.id} listing={listing} />
               ))}
             </View>
           )}
@@ -145,6 +152,29 @@ function Row({ icon, label }: { icon: IoniconName; label: string }) {
       <ThemedText style={styles.flex}>{label}</ThemedText>
       <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={theme.textSecondary} />
     </View>
+  );
+}
+
+function ListingRow({ listing }: { listing: Listing }) {
+  const { t, isRTL } = useI18n();
+  const theme = useTheme();
+  const router = useRouter();
+  const align = isRTL ? 'right' : 'left';
+
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/listing/[id]', params: { id: listing.id } })}
+      style={[styles.mineRow, { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <Image source={{ uri: listing.images[0] }} style={styles.mineThumb} contentFit="cover" />
+      <View style={styles.flex}>
+        <ThemedText numberOfLines={1} style={{ textAlign: align, fontWeight: '600' }}>
+          {listing.title}
+        </ThemedText>
+        <ThemedText type="small" themeColor="price" style={{ textAlign: align }}>
+          {listing.priceIqd > 0 ? formatPrice(listing.priceIqd, t('common_currency')) : t('contactForPrice')}
+        </ThemedText>
+      </View>
+    </Pressable>
   );
 }
 
