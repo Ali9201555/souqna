@@ -1,0 +1,115 @@
+import type { ChatThread, Listing, SellerProfile } from '@/types';
+
+export const DEMO_USER_ID = 'me';
+
+function img(seed: string, count: number): string[] {
+  return Array.from(
+    { length: count },
+    (_, i) => `https://picsum.photos/seed/souqna-${seed}-${i}/800/600`,
+  );
+}
+
+const now = Date.now();
+const mins = (m: number) => now - m * 60_000;
+const hrs = (h: number) => now - h * 3_600_000;
+const days = (d: number) => now - d * 86_400_000;
+
+export const SELLERS: SellerProfile[] = [
+  { id: 'me', name: 'أنت', phone: '+9647700000000', avatarColor: '#0E8F6E', joinedYear: 2026, ratingAvg: 0, ratingCount: 0, isPhoneVerified: true },
+  { id: 's1', name: 'أحمد العبيدي', phone: '+9647701112233', avatarColor: '#2563EB', joinedYear: 2023, ratingAvg: 4.8, ratingCount: 41, isPhoneVerified: true },
+  { id: 's2', name: 'مريم حسن', phone: '+9647705556677', avatarColor: '#DB2777', joinedYear: 2024, ratingAvg: 4.6, ratingCount: 23, isPhoneVerified: true },
+  { id: 's3', name: 'كاروان رشید', phone: '+9647508889900', avatarColor: '#D97706', joinedYear: 2022, ratingAvg: 4.9, ratingCount: 88, isPhoneVerified: true },
+  { id: 's4', name: 'علي الكناني', phone: '+9647802223344', avatarColor: '#7C3AED', joinedYear: 2025, ratingAvg: 4.2, ratingCount: 9, isPhoneVerified: false },
+];
+
+export const SEED_LISTINGS: Listing[] = [
+  {
+    id: 'l1',
+    title: 'تويوتا كورولا 2019 وارد الخليج',
+    description: 'سيارة بحالة ممتازة، ماشية 78 ألف كم، فحص كامل، صبغ وكالة. السعر قابل للتفاوض البسيط.',
+    priceIqd: 18_500_000, negotiable: true, categoryId: 'vehicles', governorateId: 'baghdad',
+    condition: 'used', images: img('corolla', 3), sellerId: 's1', createdAt: mins(35),
+  },
+  {
+    id: 'l2',
+    title: 'آيفون 14 برو ماكس 256 غيغا',
+    description: 'الجهاز نظيف جداً مع علبته والشاحن الأصلي، البطارية 92%. لا يوجد أي خدش.',
+    priceIqd: 1_150_000, negotiable: false, categoryId: 'mobiles', governorateId: 'erbil',
+    condition: 'used', images: img('iphone', 2), sellerId: 's3', createdAt: hrs(3),
+  },
+  {
+    id: 'l3',
+    title: 'شقة للإيجار 3 غرف نوم - حي الجزائر',
+    description: 'شقة مفروشة بالكامل، طابق ثاني، قريبة من الخدمات والمولات. الإيجار شهري.',
+    priceIqd: 750_000, negotiable: true, categoryId: 'realestate', governorateId: 'basra',
+    condition: 'used', images: img('apartment', 3), sellerId: 's2', createdAt: hrs(7),
+  },
+  {
+    id: 'l4',
+    title: 'كنبة (أريكة) 7 مقاعد لون بيج',
+    description: 'مستعملة سنة واحدة بحالة جيدة جداً، قماش فاخر سهل التنظيف.',
+    priceIqd: 350_000, negotiable: true, categoryId: 'furniture', governorateId: 'najaf',
+    condition: 'used', images: img('sofa', 2), sellerId: 's4', createdAt: hrs(11),
+  },
+  {
+    id: 'l5',
+    title: 'مولدة كهرباء 5 كيلو ياباني',
+    description: 'مولدة بنزين، اشتغال نظيف وهادئ، مناسبة للبيت. مع ضمان شهر.',
+    priceIqd: 600_000, negotiable: false, categoryId: 'power', governorateId: 'baghdad',
+    condition: 'used', images: img('generator', 1), sellerId: 's1', createdAt: days(1),
+  },
+  {
+    id: 'l6',
+    title: 'لابتوب Dell XPS 13 - i7 الجيل 11',
+    description: 'رام 16، هارد SSD 512، الشاشة لمس. مثالي للبرمجة والتصميم.',
+    priceIqd: 900_000, negotiable: true, categoryId: 'electronics', governorateId: 'sulaymaniyah',
+    condition: 'used', images: img('laptop', 2), sellerId: 's3', createdAt: days(1),
+  },
+  {
+    id: 'l7',
+    title: 'ثلاجة LG انفرتر 18 قدم جديدة',
+    description: 'بالكارتون لم تُفتح، موفرة للطاقة، مع ضمان الوكيل سنتين.',
+    priceIqd: 800_000, negotiable: false, categoryId: 'appliances', governorateId: 'karbala',
+    condition: 'new', images: img('fridge', 1), sellerId: 's2', createdAt: days(2),
+  },
+  {
+    id: 'l8',
+    title: 'بلايستيشن 5 مع يدتين و3 ألعاب',
+    description: 'النسخة الأصلية، استعمال خفيف، يعمل بكامل طاقته. الألعاب: FIFA، GTA V، Spider-Man.',
+    priceIqd: 650_000, negotiable: true, categoryId: 'electronics', governorateId: 'baghdad',
+    condition: 'used', images: img('ps5', 2), sellerId: 's4', createdAt: days(2),
+  },
+  {
+    id: 'l9',
+    title: 'دراجة هوائية جبلية مقاس 29',
+    description: '21 سرعة، فيتيس شيمانو، حالة ممتازة. مناسبة للكبار.',
+    priceIqd: 175_000, negotiable: true, categoryId: 'other', governorateId: 'kirkuk',
+    condition: 'used', images: img('bike', 1), sellerId: 's1', createdAt: days(3),
+  },
+  {
+    id: 'l10',
+    title: 'خدمة تركيب وصيانة كاميرات المراقبة',
+    description: 'تركيب أنظمة كاميرات للمنازل والمحلات مع المتابعة عبر الموبايل. كشف مجاني داخل بغداد.',
+    priceIqd: 0, negotiable: false, categoryId: 'services', governorateId: 'baghdad',
+    condition: 'new', images: img('cctv', 1), sellerId: 's3', createdAt: days(4),
+  },
+  {
+    id: 'l11',
+    title: 'سامسونج Galaxy S23 جديد',
+    description: 'جهاز جديد مكفول، 256 غيغا، اللون أسود. السعر نهائي.',
+    priceIqd: 1_050_000, negotiable: false, categoryId: 'mobiles', governorateId: 'basra',
+    condition: 'new', images: img('galaxy', 2), sellerId: 's2', createdAt: days(5),
+  },
+  {
+    id: 'l12',
+    title: 'أرض سكنية 200م تسوية كاملة',
+    description: 'قطعة أرض في موقع مميز قرب الشارع العام، سند طابو صرف. تصلح للبناء فوراً.',
+    priceIqd: 45_000_000, negotiable: true, categoryId: 'realestate', governorateId: 'anbar',
+    condition: 'used', images: img('land', 2), sellerId: 's1', createdAt: days(6),
+  },
+];
+
+export const SEED_THREADS: ChatThread[] = [
+  { id: 't1', listingId: 'l1', withSellerId: 's1', lastMessage: 'تمام، نلتقي بكرة الساعة 5 العصر؟', lastAt: mins(20), unread: 2 },
+  { id: 't2', listingId: 'l6', withSellerId: 's3', lastMessage: 'آخر سعر شكد بالضبط؟', lastAt: hrs(5), unread: 0 },
+];
