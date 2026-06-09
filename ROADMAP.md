@@ -59,8 +59,10 @@ verification gate and git workflow.
 
 ## Phase 6 — Launch hardening
 
-- [ ] Brand assets: app icon + splash in Souqna green (`#0E8F6E`), replace Expo
-      template art; set splash `backgroundColor` to brand
+- [x] Splash + Android adaptive-icon `backgroundColor` set to Souqna green
+      (`#0E8F6E`), replacing the Expo template blue
+- [ ] Replace Expo template icon/splash art with the Souqna logo (needs a
+      designed mark; only the brand colors are done)
 - [x] EAS Build profiles (preview + production) for iOS & Android
 - [ ] Store listings in Arabic (screenshots, description, keywords)
 - [ ] Kurdish (Sorani) translation review by a native speaker
