@@ -87,6 +87,11 @@ const en = {
   profile_ratings: '{avg} ({count} ratings)',
   profile_listingsCount: '{count} listings',
 
+  saved_empty: 'No saved listings yet',
+  saved_emptyHint: 'Tap the heart on any listing to save it here.',
+  saved_browse: 'Browse listings',
+  saved_count: '{count} saved',
+
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
@@ -184,6 +189,11 @@ const ar: Partial<Record<TKey, string>> = {
   profile_ratings: '{avg} ({count} تقييم)',
   profile_listingsCount: '{count} إعلان',
 
+  saved_empty: 'لا توجد إعلانات محفوظة بعد',
+  saved_emptyHint: 'اضغط على القلب في أي إعلان لحفظه هنا.',
+  saved_browse: 'تصفّح الإعلانات',
+  saved_count: '{count} محفوظ',
+
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
@@ -248,6 +258,9 @@ const ku: Partial<Record<TKey, string>> = {
   profile_guest: 'میوان',
   profile_language: 'زمان',
   profile_myListings: 'ڕیکلامەکانم',
+  profile_favorites: 'پاشەکەوتکراوەکان',
+  saved_empty: 'هێشتا هیچ ڕیکلامێکی پاشەکەوتکراو نییە',
+  saved_browse: 'گەڕان بە ڕیکلامەکاندا',
 
   lang_ar: 'العربية',
   lang_ku: 'کوردی',

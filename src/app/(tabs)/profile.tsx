@@ -17,7 +17,7 @@ import type { Language } from '@/types';
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function ProfileScreen() {
-  const { myListings } = useListings();
+  const { myListings, favorites } = useListings();
   const { t, lang, setLang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
@@ -55,6 +55,13 @@ export default function ProfileScreen() {
             </ThemedText>
           )}
         </View>
+
+        <Row
+          icon="heart-outline"
+          label={t('profile_favorites')}
+          value={favorites.length > 0 ? String(favorites.length) : undefined}
+          onPress={() => router.push('/saved')}
+        />
 
         <Section title={t('profile_language')} align={align}>
           <View style={[styles.langRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -132,19 +139,43 @@ function Section({ title, align, children }: { title: string; align: 'left' | 'r
   );
 }
 
-function Row({ icon, label }: { icon: IoniconName; label: string }) {
+function Row({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: IoniconName;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+}) {
   const theme = useTheme();
   const { isRTL } = useI18n();
-  return (
-    <View
-      style={[
-        styles.row,
-        { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' },
-      ]}>
+  const rowStyle = [
+    styles.row,
+    { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' } as const,
+  ];
+  const inner = (
+    <>
       <Ionicons name={icon} size={20} color={theme.text} />
       <ThemedText style={styles.flex}>{label}</ThemedText>
+      {value != null && (
+        <ThemedText type="small" themeColor="textSecondary">
+          {value}
+        </ThemedText>
+      )}
       <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={theme.textSecondary} />
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={rowStyle}>{inner}</View>;
+  }
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [rowStyle, pressed && styles.rowPressed]}>
+      {inner}
+    </Pressable>
   );
 }
 
@@ -171,4 +202,5 @@ const styles = StyleSheet.create({
   mineRow: { alignItems: 'center', gap: Spacing.three, padding: Spacing.two, borderRadius: Radius.md },
   mineThumb: { width: 56, height: 56, borderRadius: Radius.sm },
   row: { alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md },
+  rowPressed: { opacity: 0.7 },
 });
