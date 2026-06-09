@@ -15,6 +15,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type SortMode = 'newest' | 'price_low' | 'price_high';
+
+const SORT_MODES: SortMode[] = ['newest', 'price_low', 'price_high'];
+
+function isSortMode(value: string | null): value is SortMode {
+  return value === 'newest' || value === 'price_low' || value === 'price_high';
+}
 
 function FilterButton({ icon, label, onPress }: { icon: IoniconName; label: string; onPress: () => void }) {
   const theme = useTheme();
@@ -45,21 +52,40 @@ export default function SearchScreen() {
   const [categorySelection, setCategorySelection] = useState<{ routeCategoryId: string | null; value: string | null } | null>(null);
   const categoryId = categorySelection?.routeCategoryId === routeCategoryId ? categorySelection.value : routeCategoryId;
   const [governorateId, setGovernorateId] = useState<string | null>(null);
-  const [picker, setPicker] = useState<null | 'category' | 'governorate'>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [picker, setPicker] = useState<null | 'category' | 'governorate' | 'sort'>(null);
   const setCategoryId = (value: string | null) => setCategorySelection({ routeCategoryId, value });
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return listings.filter((l) => {
+    const filtered = listings.filter((l) => {
       if (categoryId && l.categoryId !== categoryId) return false;
       if (governorateId && l.governorateId !== governorateId) return false;
       if (q && !l.title.toLowerCase().includes(q) && !l.description.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [listings, query, categoryId, governorateId]);
+    return [...filtered].sort((a, b) => {
+      if (sortMode === 'price_low') {
+        const aPrice = a.priceIqd > 0 ? a.priceIqd : Number.POSITIVE_INFINITY;
+        const bPrice = b.priceIqd > 0 ? b.priceIqd : Number.POSITIVE_INFINITY;
+        return aPrice - bPrice;
+      }
+      if (sortMode === 'price_high') {
+        const aPrice = a.priceIqd > 0 ? a.priceIqd : -1;
+        const bPrice = b.priceIqd > 0 ? b.priceIqd : -1;
+        return bPrice - aPrice;
+      }
+      return b.createdAt - a.createdAt;
+    });
+  }, [listings, query, categoryId, governorateId, sortMode]);
 
   const categoryLabel = categoryId ? getCategory(categoryId)?.name[lang] : t('search_all');
   const govLabel = governorateId ? getGovernorate(governorateId)?.name[lang] : t('search_all');
+  const sortLabels: Record<SortMode, string> = {
+    newest: t('search_sort_newest'),
+    price_low: t('search_sort_priceLow'),
+    price_high: t('search_sort_priceHigh'),
+  };
 
   const categoryOptions: PickerOption[] = [
     { id: null, label: t('search_all') },
@@ -69,8 +95,9 @@ export default function SearchScreen() {
     { id: null, label: t('search_all') },
     ...GOVERNORATES.map((g) => ({ id: g.id, label: g.name[lang] })),
   ];
+  const sortOptions: PickerOption[] = SORT_MODES.map((id) => ({ id, label: sortLabels[id] }));
 
-  const hasFilters = Boolean(categoryId || governorateId || query.trim());
+  const hasFilters = Boolean(categoryId || governorateId || query.trim() || sortMode !== 'newest');
 
   return (
     <Screen title={t('search_title')}>
@@ -98,6 +125,7 @@ export default function SearchScreen() {
         <View style={[styles.filterRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <FilterButton icon="grid-outline" label={`${t('search_category')}: ${categoryLabel}`} onPress={() => setPicker('category')} />
           <FilterButton icon="location-outline" label={`${t('search_governorate')}: ${govLabel}`} onPress={() => setPicker('governorate')} />
+          <FilterButton icon="swap-vertical-outline" label={`${t('search_sort')}: ${sortLabels[sortMode]}`} onPress={() => setPicker('sort')} />
         </View>
 
         <View style={[styles.resultsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
@@ -110,6 +138,7 @@ export default function SearchScreen() {
                 setQuery('');
                 setCategoryId(null);
                 setGovernorateId(null);
+                setSortMode('newest');
               }}>
               <ThemedText type="small" themeColor="tint">
                 {t('search_clear')}
@@ -155,6 +184,16 @@ export default function SearchScreen() {
         onSelect={setGovernorateId}
         onClose={() => setPicker(null)}
       />
+      <PickerSheet
+        visible={picker === 'sort'}
+        title={t('search_sort')}
+        options={sortOptions}
+        selectedId={sortMode}
+        onSelect={(value) => {
+          if (isSortMode(value)) setSortMode(value);
+        }}
+        onClose={() => setPicker(null)}
+      />
     </Screen>
   );
 }
@@ -169,9 +208,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   input: { flex: 1, paddingVertical: Spacing.three, fontSize: 15 },
-  filterRow: { gap: Spacing.two },
+  filterRow: { gap: Spacing.two, flexWrap: 'wrap' },
   filterBtn: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 150,
     alignItems: 'center',
     gap: Spacing.one,
     paddingHorizontal: Spacing.three,

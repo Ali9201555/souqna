@@ -1,4 +1,5 @@
-import { createContext, use, useCallback, useMemo, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
 import type { ChatThread, Listing, SellerProfile } from '@/types';
@@ -25,12 +26,85 @@ type ListingsContextValue = {
 
 const ListingsContext = createContext<ListingsContextValue | null>(null);
 
+const LOCAL_LISTINGS_KEY = 'souqna.localListings';
+const FAVORITES_KEY = 'souqna.favorites';
+
 const byNewest = (a: Listing, b: Listing) => b.createdAt - a.createdAt;
 
+function isListing(value: unknown): value is Listing {
+  if (value == null || typeof value !== 'object') return false;
+  const listing = value as Partial<Listing>;
+  return (
+    typeof listing.id === 'string' &&
+    typeof listing.title === 'string' &&
+    typeof listing.description === 'string' &&
+    typeof listing.priceIqd === 'number' &&
+    typeof listing.negotiable === 'boolean' &&
+    typeof listing.categoryId === 'string' &&
+    typeof listing.governorateId === 'string' &&
+    (listing.condition === 'new' || listing.condition === 'used') &&
+    Array.isArray(listing.images) &&
+    listing.images.every((uri) => typeof uri === 'string') &&
+    typeof listing.sellerId === 'string' &&
+    typeof listing.createdAt === 'number'
+  );
+}
+
+function parseLocalListings(raw: string | null): Listing[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isListing).sort(byNewest) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseFavorites(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export function ListingsProvider({ children }: { children: ReactNode }) {
-  const [listings, setListings] = useState<Listing[]>(() => [...SEED_LISTINGS].sort(byNewest));
+  const [localListings, setLocalListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
+  const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([AsyncStorage.getItem(LOCAL_LISTINGS_KEY), AsyncStorage.getItem(FAVORITES_KEY)])
+      .then(([storedListings, storedFavorites]) => {
+        if (!isMounted) return;
+        setLocalListings(parseLocalListings(storedListings));
+        setFavorites(parseFavorites(storedFavorites));
+      })
+      .finally(() => {
+        if (isMounted) setHasLoadedStorage(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    AsyncStorage.setItem(LOCAL_LISTINGS_KEY, JSON.stringify(localListings)).catch(() => undefined);
+  }, [hasLoadedStorage, localListings]);
+
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)).catch(() => undefined);
+  }, [hasLoadedStorage, favorites]);
+
+  const listings = useMemo(() => [...localListings, ...SEED_LISTINGS].sort(byNewest), [localListings]);
 
   const addListing = useCallback((input: NewListingInput) => {
     const listing: Listing = {
@@ -39,7 +113,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       createdAt: Date.now(),
       sellerId: DEMO_USER_ID,
     };
-    setListings((prev) => [listing, ...prev].sort(byNewest));
+    setLocalListings((prev) => [listing, ...prev].sort(byNewest));
     return listing;
   }, []);
 

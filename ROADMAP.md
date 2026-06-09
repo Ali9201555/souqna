@@ -18,7 +18,7 @@ verification gate and git workflow.
 
 ## Phase 1 — Wire the backend (Supabase)
 
-- [ ] Add `@supabase/supabase-js`; create `src/lib/supabase.ts` reading
+- [x] Add `@supabase/supabase-js`; create `src/lib/supabase.ts` reading
       `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (document in
       `.env.example`, never commit real keys)
 - [ ] Apply migrations + `seed.sql` to a Supabase project
