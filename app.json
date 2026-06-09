@@ -8,9 +8,11 @@
     "scheme": "souqna",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.souqna.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.souqna.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
