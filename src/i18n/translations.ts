@@ -111,6 +111,8 @@ const en = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'Save listing',
+
   common_currency: 'IQD',
   common_justNow: 'just now',
   common_minutesAgo: '{count} min ago',
@@ -228,6 +230,8 @@ const ar: Partial<Record<TKey, string>> = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'حفظ الإعلان',
+
   common_currency: 'د.ع',
   common_justNow: 'الآن',
   common_minutesAgo: 'قبل {count} دقيقة',
@@ -307,6 +311,8 @@ const ku: Partial<Record<TKey, string>> = {
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
+
+  a11y_saveListing: 'پاشەکەوتکردنی ڕیکلام',
 
   common_currency: 'د.ع',
   common_close: 'داخستن',
