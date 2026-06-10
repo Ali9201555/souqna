@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
+import { fetchActiveListings } from '@/data/listingsApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import type { ChatThread, Listing, SellerProfile } from '@/types';
 
 /**
@@ -17,6 +19,12 @@ type ListingsContextValue = {
   favorites: string[];
   currentUserId: string;
   myListings: Listing[];
+  /** True while the listings feed is loading (storage hydration or a Supabase fetch). */
+  isLoading: boolean;
+  /** Non-null when the last listings fetch failed (Supabase-backed mode only). */
+  error: string | null;
+  /** Re-fetch the listings feed. No-op in in-memory mode. */
+  refetch: () => Promise<void>;
   addListing: (input: NewListingInput) => Listing;
   getListing: (id: string) => Listing | undefined;
   getSeller: (id: string) => SellerProfile | undefined;
@@ -76,6 +84,29 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
+  // Supabase-backed feed. When unconfigured these stay inert and the in-memory
+  // SEED_LISTINGS are shown instead, so the app runs identically without keys.
+  const [remoteListings, setRemoteListings] = useState<Listing[]>([]);
+  const [isLoadingRemote, setIsLoadingRemote] = useState(isSupabaseConfigured);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setIsLoadingRemote(true);
+    setRemoteError(null);
+    try {
+      setRemoteListings(await fetchActiveListings());
+    } catch (e) {
+      setRemoteError(e instanceof Error ? e.message : 'Failed to load listings');
+    } finally {
+      setIsLoadingRemote(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -104,7 +135,15 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)).catch(() => undefined);
   }, [hasLoadedStorage, favorites]);
 
-  const listings = useMemo(() => [...localListings, ...SEED_LISTINGS].sort(byNewest), [localListings]);
+  // Real listings come from Supabase once configured; otherwise the demo seed.
+  // Locally-created listings always sit on top so "post → see it" works pre-auth.
+  const baseListings = isSupabaseConfigured ? remoteListings : SEED_LISTINGS;
+  const listings = useMemo(
+    () => [...localListings, ...baseListings].sort(byNewest),
+    [localListings, baseListings],
+  );
+
+  const isLoading = !hasLoadedStorage || isLoadingRemote;
 
   const addListing = useCallback((input: NewListingInput) => {
     const listing: Listing = {
@@ -144,13 +183,16 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       favorites,
       currentUserId: DEMO_USER_ID,
       myListings,
+      isLoading,
+      error: remoteError,
+      refetch,
       addListing,
       getListing,
       getSeller,
       toggleFavorite,
       isFavorite,
     }),
-    [listings, threads, favorites, myListings, addListing, getListing, getSeller, toggleFavorite, isFavorite],
+    [listings, threads, favorites, myListings, isLoading, remoteError, refetch, addListing, getListing, getSeller, toggleFavorite, isFavorite],
   );
 
   return <ListingsContext value={value}>{children}</ListingsContext>;
