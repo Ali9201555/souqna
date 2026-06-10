@@ -8,9 +8,10 @@ import type { Session, User } from '@supabase/supabase-js';
  * but email OTP works zero-config. With this flag on, the sign-in flow routes
  * the identical two-leg OTP flow through email instead of SMS. The public
  * surface stays phone-shaped; only the input field + the API channel change.
- * Default false → real phone SMS (once Twilio is provisioned).
+ * Gated on __DEV__ so a release build can never ship the email channel even if
+ * the env var leaks into a production build.
  */
-export const AUTH_USES_EMAIL = process.env.EXPO_PUBLIC_AUTH_DEV_EMAIL_OTP === 'true';
+export const AUTH_USES_EMAIL = __DEV__ && process.env.EXPO_PUBLIC_AUTH_DEV_EMAIL_OTP === 'true';
 
 export type AuthErrorCode =
   | 'invalid_phone'
@@ -129,19 +130,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('id, name, phone, avatar_color, rating_avg, rating_count, is_phone_verified')
       .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!mounted || !data) return;
-        const row = data as ProfileRow;
-        setProfile({
-          id: row.id,
-          name: row.name,
-          phone: row.phone,
-          avatarColor: row.avatar_color,
-          ratingAvg: Number(row.rating_avg) || 0,
-          ratingCount: row.rating_count,
-          isPhoneVerified: row.is_phone_verified,
-        });
-      });
+      .then(
+        ({ data, error }) => {
+          // On error the profile just stays null — gating never depends on it.
+          if (!mounted || error || !data) return;
+          const row = data as ProfileRow;
+          setProfile({
+            id: row.id,
+            name: row.name,
+            phone: row.phone,
+            avatarColor: row.avatar_color,
+            ratingAvg: Number(row.rating_avg) || 0,
+            ratingCount: row.rating_count,
+            isPhoneVerified: row.is_phone_verified,
+          });
+        },
+        () => undefined,
+      );
     return () => {
       mounted = false;
     };

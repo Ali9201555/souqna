@@ -37,11 +37,13 @@ export default function AuthScreen() {
   const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
   const [resendIn, setResendIn] = useState(0);
 
+  // One interval for the whole otp step (not re-armed per tick); ticking at 0
+  // is a same-value setState, which React bails out of.
   useEffect(() => {
-    if (step !== 'otp' || resendIn <= 0) return;
-    const id = setInterval(() => setResendIn((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    if (step !== 'otp') return;
+    const id = setInterval(() => setResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(id);
-  }, [step, resendIn]);
+  }, [step]);
 
   const send = async () => {
     if (pending) return;
@@ -74,7 +76,9 @@ export default function AuthScreen() {
     setErrorCode(null);
   };
 
-  const target = AUTH_USES_EMAIL ? identifier.trim() : `+964 ${identifier.replace(/\D/g, '')}`;
+  // U+2066/U+2069 (LRI/PDI) bidi-isolate the number/email so "+964 …" doesn't
+  // visually reorder inside an Arabic/Kurdish sentence.
+  const target = `⁦${AUTH_USES_EMAIL ? identifier.trim() : `+964 ${identifier.replace(/\D/g, '')}`}⁩`;
   const inputBase = { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border };
   const closeBtn = (
     <Pressable onPress={() => router.back()} hitSlop={8}>
@@ -130,6 +134,10 @@ export default function AuthScreen() {
           <>
             <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
               {t('auth_otpSentTo', { target })}
+            </ThemedText>
+
+            <ThemedText type="smallBold" style={{ textAlign: align }}>
+              {t('auth_otpLabel')}
             </ThemedText>
 
             <TextInput
