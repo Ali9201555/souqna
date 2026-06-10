@@ -118,6 +118,32 @@ const en = {
   common_daysAgo: '{count} d ago',
   common_yesterday: 'yesterday',
   common_close: 'Close',
+
+  auth_title: 'Sign in',
+  auth_phoneLabel: 'Phone number',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'Email',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'Send code',
+  auth_otpLabel: 'Verification code',
+  auth_otpPlaceholder: '6-digit code',
+  auth_otpSentTo: 'We sent a code to {target}',
+  auth_verify: 'Verify',
+  auth_wrongNumber: 'Wrong number?',
+  auth_resend: 'Resend code',
+  auth_resendIn: 'Resend in {seconds}s',
+  auth_signOut: 'Sign out',
+  auth_err_invalid_phone: 'Enter a valid Iraqi mobile number',
+  auth_err_invalid_email: 'Enter a valid email address',
+  auth_err_invalid_code: 'Incorrect or expired code',
+  auth_err_rate_limited: 'Too many attempts. Try again later',
+  auth_err_expired: 'This code has expired',
+  auth_err_network: 'Network error. Check your connection',
+  auth_err_unknown: 'Something went wrong',
+
+  gate_sell_title: 'Sign in to sell',
+  gate_sell_message: 'Create a free account to post your listing',
+  gate_cta: 'Sign in',
 } satisfies Record<string, string>;
 
 export type TKey = keyof typeof en;
@@ -235,6 +261,32 @@ const ar: Partial<Record<TKey, string>> = {
   common_daysAgo: 'قبل {count} يوم',
   common_yesterday: 'أمس',
   common_close: 'إغلاق',
+
+  auth_title: 'تسجيل الدخول',
+  auth_phoneLabel: 'رقم الهاتف',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'البريد الإلكتروني',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'إرسال الرمز',
+  auth_otpLabel: 'رمز التحقق',
+  auth_otpPlaceholder: 'رمز من 6 أرقام',
+  auth_otpSentTo: 'أرسلنا رمزًا إلى {target}',
+  auth_verify: 'تحقق',
+  auth_wrongNumber: 'رقم خاطئ؟',
+  auth_resend: 'إعادة إرسال الرمز',
+  auth_resendIn: 'إعادة الإرسال خلال {seconds} ثانية',
+  auth_signOut: 'تسجيل الخروج',
+  auth_err_invalid_phone: 'أدخل رقم هاتف عراقي صحيح',
+  auth_err_invalid_email: 'أدخل بريدًا إلكترونيًا صحيحًا',
+  auth_err_invalid_code: 'الرمز غير صحيح أو منتهي الصلاحية',
+  auth_err_rate_limited: 'محاولات كثيرة. حاول لاحقًا',
+  auth_err_expired: 'انتهت صلاحية هذا الرمز',
+  auth_err_network: 'خطأ في الشبكة. تحقق من اتصالك',
+  auth_err_unknown: 'حدث خطأ ما',
+
+  gate_sell_title: 'سجّل دخولك للبيع',
+  gate_sell_message: 'أنشئ حسابًا مجانيًا لنشر إعلانك',
+  gate_cta: 'تسجيل الدخول',
 };
 
 // Kurdish (Sorani) — best-effort, pending native review. Falls back to English.
@@ -310,6 +362,32 @@ const ku: Partial<Record<TKey, string>> = {
 
   common_currency: 'د.ع',
   common_close: 'داخستن',
+
+  auth_title: 'چوونەژوورەوە',
+  auth_phoneLabel: 'ژمارەی مۆبایل',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'ئیمەیل',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'ناردنی کۆد',
+  auth_otpLabel: 'کۆدی پشتڕاستکردنەوە',
+  auth_otpPlaceholder: 'کۆدی ٦ ژمارەیی',
+  auth_otpSentTo: 'کۆدێکمان نارد بۆ {target}',
+  auth_verify: 'پشتڕاستکردنەوە',
+  auth_wrongNumber: 'ژمارە هەڵەیە؟',
+  auth_resend: 'دووبارە ناردنەوەی کۆد',
+  auth_resendIn: 'دووبارە ناردنەوە لە {seconds} چرکە',
+  auth_signOut: 'چوونەدەرەوە',
+  auth_err_invalid_phone: 'ژمارەیەکی دروستی مۆبایلی عێراقی بنووسە',
+  auth_err_invalid_email: 'ئیمەیلێکی دروست بنووسە',
+  auth_err_invalid_code: 'کۆد هەڵەیە یان بەسەرچووە',
+  auth_err_rate_limited: 'هەوڵی زۆر. دواتر هەوڵبدەرەوە',
+  auth_err_expired: 'ئەم کۆدە بەسەرچووە',
+  auth_err_network: 'هەڵەی تۆڕ. پەیوەندیت بپشکنە',
+  auth_err_unknown: 'هەڵەیەک ڕوویدا',
+
+  gate_sell_title: 'بۆ فرۆشتن بچۆ ژوورەوە',
+  gate_sell_message: 'هەژمارێکی بێبەرامبەر دروستبکە بۆ بڵاوکردنەوەی ڕیکلامەکەت',
+  gate_cta: 'چوونەژوورەوە',
 };
 
 export const translations: Record<Language, Partial<Record<TKey, string>>> = {

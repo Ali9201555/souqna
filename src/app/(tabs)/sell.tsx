@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
+import { AuthGate } from '@/components/auth-gate';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -72,6 +73,7 @@ export default function SellScreen() {
 
   return (
     <Screen title={t('sell_title')}>
+      <AuthGate title={t('gate_sell_title')} message={t('gate_sell_message')}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {postedId && (
           <View style={[styles.successCard, { backgroundColor: theme.tint }]}>
@@ -167,6 +169,7 @@ export default function SellScreen() {
 
       <PickerSheet visible={picker === 'category'} title={t('sell_field_category')} options={categoryOptions} selectedId={categoryId} onSelect={setCategoryId} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'governorate'} title={t('sell_field_governorate')} options={govOptions} selectedId={governorateId} onSelect={setGovernorateId} onClose={() => setPicker(null)} />
+      </AuthGate>
     </Screen>
   );
 }
