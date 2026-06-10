@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { getGovernorate } from '@/data/governorates';
@@ -16,9 +17,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const theme = useTheme();
   const router = useRouter();
   const { t, lang, isRTL } = useI18n();
-  const { isFavorite, toggleFavorite } = useListings();
+  const { getSeller, isFavorite, toggleFavorite } = useListings();
 
   const fav = isFavorite(listing.id);
+  const seller = getSeller(listing.sellerId);
   const gov = getGovernorate(listing.governorateId);
   const priceText =
     listing.priceIqd > 0 ? formatPrice(listing.priceIqd, t('common_currency')) : t('contactForPrice');
@@ -58,6 +60,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
             {gov?.name[lang]} · {formatRelativeTime(listing.createdAt, t)}
           </ThemedText>
         </View>
+        <SellerVerificationBadge verified={seller?.isPhoneVerified} size="small" />
       </View>
     </Pressable>
   );
