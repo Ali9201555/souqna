@@ -118,6 +118,11 @@ const en = {
   common_daysAgo: '{count} d ago',
   common_yesterday: 'yesterday',
   common_close: 'Close',
+
+  state_loading: 'Loading…',
+  state_errorTitle: 'Something went wrong',
+  state_errorHint: 'Please check your connection and try again.',
+  state_retry: 'Retry',
 } satisfies Record<string, string>;
 
 export type TKey = keyof typeof en;
@@ -235,6 +240,11 @@ const ar: Partial<Record<TKey, string>> = {
   common_daysAgo: 'قبل {count} يوم',
   common_yesterday: 'أمس',
   common_close: 'إغلاق',
+
+  state_loading: 'جارٍ التحميل…',
+  state_errorTitle: 'حدث خطأ ما',
+  state_errorHint: 'تحقق من اتصالك وحاول مرة أخرى.',
+  state_retry: 'إعادة المحاولة',
 };
 
 // Kurdish (Sorani) — best-effort, pending native review. Falls back to English.
@@ -310,6 +320,11 @@ const ku: Partial<Record<TKey, string>> = {
 
   common_currency: 'د.ع',
   common_close: 'داخستن',
+
+  state_loading: 'بارکردن…',
+  state_errorTitle: 'هەڵەیەک ڕوویدا',
+  state_errorHint: 'تکایە پەیوەندییەکەت بپشکنە و دووبارە هەوڵبدەوە.',
+  state_retry: 'هەوڵدانەوە',
 };
 
 export const translations: Record<Language, Partial<Record<TKey, string>>> = {
