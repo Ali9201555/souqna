@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { useAuth } from '@/data/AuthProvider';
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
-import { fetchActiveListings } from '@/data/listingsApi';
+import { createListing as apiCreateListing, fetchActiveListings } from '@/data/listingsApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import type { ChatThread, Listing, SellerProfile } from '@/types';
 
@@ -26,6 +27,8 @@ type ListingsContextValue = {
   /** Re-fetch the listings feed. No-op in in-memory mode. */
   refetch: () => Promise<void>;
   addListing: (input: NewListingInput) => Listing;
+  /** Create a listing remotely (uploads local photos). Falls back to the local addListing in demo mode. */
+  createListing: (input: NewListingInput) => Promise<Listing>;
   getListing: (id: string) => Listing | undefined;
   getSeller: (id: string) => SellerProfile | undefined;
   toggleFavorite: (id: string) => void;
@@ -79,6 +82,7 @@ function parseFavorites(raw: string | null): string[] {
 }
 
 export function ListingsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [localListings, setLocalListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
@@ -135,12 +139,16 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)).catch(() => undefined);
   }, [hasLoadedStorage, favorites]);
 
-  // Real listings come from Supabase once configured; otherwise the demo seed.
-  // Locally-created listings always sit on top so "post → see it" works pre-auth.
-  const baseListings = isSupabaseConfigured ? remoteListings : SEED_LISTINGS;
+  // Configured → the DB is the single source of truth. Demo mode → seed plus
+  // locally-persisted posts ("post → see it" without a backend). Local demo
+  // posts are deliberately NOT merged into the real feed — they belong to no
+  // real account and would pollute it.
   const listings = useMemo(
-    () => [...localListings, ...baseListings].sort(byNewest),
-    [localListings, baseListings],
+    () =>
+      isSupabaseConfigured
+        ? [...remoteListings].sort(byNewest)
+        : [...localListings, ...SEED_LISTINGS].sort(byNewest),
+    [localListings, remoteListings],
   );
 
   const isLoading = !hasLoadedStorage || isLoadingRemote;
@@ -155,6 +163,24 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     setLocalListings((prev) => [listing, ...prev].sort(byNewest));
     return listing;
   }, []);
+
+  const userId = user?.id ?? null;
+
+  const createListing = useCallback(
+    async (input: NewListingInput): Promise<Listing> => {
+      // Demo fallback. Sell is AuthGated, so this branch is only reachable if
+      // the gate is ever relaxed or Supabase isn't configured.
+      if (!isSupabaseConfigured || !userId) return addListing(input);
+      const listing = await apiCreateListing(input, userId);
+      // Land it in provider state before resolving so getListing()/the success
+      // card's detail link work immediately; it survives the next refetch
+      // because the row is status='active' in the DB. The id filter dedupes
+      // against a refetch that may already have returned the new row.
+      setRemoteListings((prev) => [listing, ...prev.filter((l) => l.id !== listing.id)].sort(byNewest));
+      return listing;
+    },
+    [addListing, userId],
+  );
 
   const getListing = useCallback(
     (id: string) => listings.find((l) => l.id === id),
@@ -171,9 +197,12 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
 
+  // Signed in → the auth uid (remote rows carry it); demo mode → DEMO_USER_ID.
+  const ownerId = userId ?? DEMO_USER_ID;
+
   const myListings = useMemo(
-    () => listings.filter((l) => l.sellerId === DEMO_USER_ID),
-    [listings],
+    () => listings.filter((l) => l.sellerId === ownerId),
+    [listings, ownerId],
   );
 
   const value = useMemo<ListingsContextValue>(
@@ -181,18 +210,19 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       listings,
       threads,
       favorites,
-      currentUserId: DEMO_USER_ID,
+      currentUserId: ownerId,
       myListings,
       isLoading,
       error: remoteError,
       refetch,
       addListing,
+      createListing,
       getListing,
       getSeller,
       toggleFavorite,
       isFavorite,
     }),
-    [listings, threads, favorites, myListings, isLoading, remoteError, refetch, addListing, getListing, getSeller, toggleFavorite, isFavorite],
+    [listings, threads, favorites, ownerId, myListings, isLoading, remoteError, refetch, addListing, createListing, getListing, getSeller, toggleFavorite, isFavorite],
   );
 
   return <ListingsContext value={value}>{children}</ListingsContext>;

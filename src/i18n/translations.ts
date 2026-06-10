@@ -72,6 +72,8 @@ const en = {
   sell_publish: 'Publish',
   sell_success: 'Your listing is live!',
   sell_required: 'Please fill in the title, price, category and governorate.',
+  sell_posting: 'Publishing…',
+  sell_error: 'Couldn’t publish your listing. Check your connection and try again.',
 
   chats_title: 'Chats',
   chats_empty: 'No conversations yet',
@@ -214,6 +216,8 @@ const ar: Partial<Record<TKey, string>> = {
   sell_publish: 'نشر الإعلان',
   sell_success: 'تم نشر إعلانك!',
   sell_required: 'يرجى تعبئة العنوان والسعر والقسم والمحافظة.',
+  sell_posting: 'جارٍ النشر…',
+  sell_error: 'تعذّر نشر إعلانك. تحقق من اتصالك وحاول مجدداً.',
 
   chats_title: 'المحادثات',
   chats_empty: 'لا توجد محادثات بعد',
@@ -335,6 +339,8 @@ const ku: Partial<Record<TKey, string>> = {
 
   sell_title: 'ڕیکلامێک دابنێ',
   sell_publish: 'بڵاوکردنەوە',
+  sell_posting: 'بڵاودەکرێتەوە…',
+  sell_error: 'بڵاوکردنەوەی ڕیکلامەکەت سەرنەکەوت. پەیوەندیت بپشکنە و دووبارە هەوڵبدەرەوە.',
 
   chats_title: 'گفتوگۆ',
   chats_empty: 'هێشتا گفتوگۆ نییە',

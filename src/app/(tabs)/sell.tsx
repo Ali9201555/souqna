@@ -16,8 +16,16 @@ import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import type { ListingCondition } from '@/types';
 
+// Arabic/Kurdish keyboards can emit Eastern Arabic numerals; normalize to
+// ASCII before parsing so the price isn't silently rejected.
+function toAsciiDigits(value: string): string {
+  return value
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+}
+
 export default function SellScreen() {
-  const { addListing } = useListings();
+  const { createListing } = useListings();
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
@@ -33,38 +41,50 @@ export default function SellScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [picker, setPicker] = useState<null | 'category' | 'governorate'>(null);
   const [error, setError] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
 
   const addPhoto = () =>
     setImages((prev) => [...prev, `https://picsum.photos/seed/new-${Date.now()}-${prev.length}/800/600`]);
   const removePhoto = (index: number) => setImages((prev) => prev.filter((_, i) => i !== index));
 
-  const publish = () => {
-    const priceNum = parseInt(price.replace(/[^\d]/g, ''), 10);
+  const publish = async () => {
+    if (posting) return;
+    const priceNum = parseInt(toAsciiDigits(price).replace(/[^\d]/g, ''), 10);
     if (!title.trim() || !categoryId || !governorateId || Number.isNaN(priceNum)) {
       setError(true);
       return;
     }
-    const listing = addListing({
-      title: title.trim(),
-      description: desc.trim(),
-      priceIqd: priceNum,
-      negotiable,
-      categoryId,
-      governorateId,
-      condition,
-      images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
-    });
     setError(false);
-    setPostedId(listing.id);
-    setTitle('');
-    setDesc('');
-    setPrice('');
-    setNegotiable(false);
-    setCategoryId(null);
-    setGovernorateId(null);
-    setCondition('used');
-    setImages([]);
+    setSubmitError(false);
+    setPosting(true);
+    try {
+      const listing = await createListing({
+        title: title.trim(),
+        description: desc.trim(),
+        priceIqd: priceNum,
+        negotiable,
+        categoryId,
+        governorateId,
+        condition,
+        images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
+      });
+      setPostedId(listing.id);
+      // Reset only on success — a failed publish keeps the draft for retry.
+      setTitle('');
+      setDesc('');
+      setPrice('');
+      setNegotiable(false);
+      setCategoryId(null);
+      setGovernorateId(null);
+      setCondition('used');
+      setImages([]);
+    } catch {
+      setSubmitError(true);
+    } finally {
+      setPosting(false);
+    }
   };
 
   const categoryOptions: PickerOption[] = CATEGORIES.map((c) => ({ id: c.id, label: c.name[lang] }));
@@ -161,9 +181,19 @@ export default function SellScreen() {
             {t('sell_required')}
           </ThemedText>
         )}
+        {submitError && (
+          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+            {t('sell_error')}
+          </ThemedText>
+        )}
 
-        <Pressable onPress={publish} style={[styles.publish, { backgroundColor: theme.tint }]}>
-          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>{t('sell_publish')}</ThemedText>
+        <Pressable
+          onPress={() => void publish()}
+          disabled={posting}
+          style={[styles.publish, { backgroundColor: theme.tint, opacity: posting ? 0.6 : 1 }]}>
+          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>
+            {posting ? t('sell_posting') : t('sell_publish')}
+          </ThemedText>
         </Pressable>
       </ScrollView>
 
