@@ -72,6 +72,10 @@ const en = {
   sell_publish: 'Publish',
   sell_success: 'Your listing is live!',
   sell_required: 'Please fill in the title, price, category and governorate.',
+  sell_guard_title: 'Use a clear title between 6 and 90 characters.',
+  sell_guard_description: 'Keep the description under 1,500 characters.',
+  sell_guard_content: 'Remove payment links, outside contact details, or risky transfer terms.',
+  sell_guard_rateLimit: 'You have posted several listings today. Please try again tomorrow.',
 
   chats_title: 'Chats',
   chats_empty: 'No conversations yet',
@@ -110,6 +114,8 @@ const en = {
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
+
+  a11y_saveListing: 'Save listing',
 
   common_currency: 'IQD',
   common_justNow: 'just now',
@@ -189,6 +195,10 @@ const ar: Partial<Record<TKey, string>> = {
   sell_publish: 'نشر الإعلان',
   sell_success: 'تم نشر إعلانك!',
   sell_required: 'يرجى تعبئة العنوان والسعر والقسم والمحافظة.',
+  sell_guard_title: 'استخدم عنواناً واضحاً بين 6 و90 حرفاً.',
+  sell_guard_description: 'اجعل الوصف أقل من 1,500 حرف.',
+  sell_guard_content: 'احذف روابط الدفع أو وسائل التواصل الخارجية أو عبارات التحويل الخطرة.',
+  sell_guard_rateLimit: 'نشرت عدة إعلانات اليوم. حاول مرة أخرى غداً.',
 
   chats_title: 'المحادثات',
   chats_empty: 'لا توجد محادثات بعد',
@@ -227,6 +237,8 @@ const ar: Partial<Record<TKey, string>> = {
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
+
+  a11y_saveListing: 'حفظ الإعلان',
 
   common_currency: 'د.ع',
   common_justNow: 'الآن',
@@ -285,6 +297,11 @@ const ku: Partial<Record<TKey, string>> = {
 
   sell_title: 'ڕیکلامێک دابنێ',
   sell_publish: 'بڵاوکردنەوە',
+  sell_required: 'تکایە ناونیشان، نرخ، بەش و پارێزگا پڕ بکەوە.',
+  sell_guard_title: 'ناونیشانێکی ڕوون لە نێوان 6 و90 پیت بەکاربهێنە.',
+  sell_guard_description: 'وەسفەکە لە 1,500 پیت کەمتر بهێڵەوە.',
+  sell_guard_content: 'لینکی پارەدان، پەیوەندی دەرەکی، یان وشەی گواستنەوەی مەترسیدار بسڕەوە.',
+  sell_guard_rateLimit: 'ئەمڕۆ چەند ڕیکلامێکت بڵاوکردووەتەوە. سبەی دووبارە هەوڵ بدەوە.',
 
   chats_title: 'گفتوگۆ',
   chats_empty: 'هێشتا گفتوگۆ نییە',
@@ -307,6 +324,8 @@ const ku: Partial<Record<TKey, string>> = {
   lang_ar: 'العربية',
   lang_ku: 'کوردی',
   lang_en: 'English',
+
+  a11y_saveListing: 'پاشەکەوتکردنی ڕیکلام',
 
   common_currency: 'د.ع',
   common_close: 'داخستن',
