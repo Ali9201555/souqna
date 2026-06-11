@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -222,12 +223,7 @@ function CardFace({ listing, dimmed }: { listing: Listing; dimmed?: boolean }) {
         <View style={[styles.metaRow, { flexDirection: rowDir }]}>
           <Ionicons name="location-outline" size={15} color="#fff" />
           <ThemedText style={styles.meta}>{gov?.name[lang]}</ThemedText>
-          {seller?.isPhoneVerified && (
-            <View style={[styles.trust, { backgroundColor: theme.tint, flexDirection: rowDir }]}>
-              <Ionicons name="shield-checkmark" size={13} color={theme.onTint} />
-              <ThemedText style={[styles.trustText, { color: theme.onTint }]}>{t('detail_verified')}</ThemedText>
-            </View>
-          )}
+          <SellerVerificationBadge verified={seller?.isPhoneVerified} variant="solid" size="small" />
           {seller && seller.ratingCount > 0 && (
             <View style={[styles.rating, { flexDirection: rowDir }]}>
               <Ionicons name="star" size={13} color={theme.star} />
@@ -258,8 +254,6 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 18, fontWeight: '700', lineHeight: 24 },
   metaRow: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one, flexWrap: 'wrap' },
   meta: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  trust: { alignItems: 'center', gap: 3, paddingHorizontal: Spacing.two, paddingVertical: 2, borderRadius: Radius.pill },
-  trustText: { fontSize: 11, fontWeight: '800' },
   rating: { alignItems: 'center', gap: 2 },
   stamp: {
     position: 'absolute',
