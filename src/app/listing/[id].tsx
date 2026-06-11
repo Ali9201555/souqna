@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { ReportListingSheet } from '@/components/report-listing-sheet';
+import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
@@ -171,14 +172,7 @@ export default function ListingDetailScreen() {
                   <ThemedText numberOfLines={1} style={[styles.sellerName, { textAlign: align }]}>
                     {seller.name}
                   </ThemedText>
-                  {seller.isPhoneVerified && (
-                    <View style={[styles.verifiedRow, { flexDirection: rowDir }]}>
-                      <Ionicons name="shield-checkmark" size={14} color={theme.success} />
-                      <ThemedText type="small" themeColor="success">
-                        {t('detail_verified')}
-                      </ThemedText>
-                    </View>
-                  )}
+                  <SellerVerificationBadge verified={seller.isPhoneVerified} />
                 </View>
                 <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
                   {seller.ratingCount > 0
@@ -312,7 +306,6 @@ const styles = StyleSheet.create({
   },
   sellerNameRow: { alignItems: 'center', gap: Spacing.two },
   sellerName: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
-  verifiedRow: { alignItems: 'center', gap: 2 },
   section: { gap: Spacing.two },
   description: { lineHeight: 24 },
   detailRow: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },

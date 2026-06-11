@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { useAuth } from '@/data/AuthProvider';
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
+import { createListing as apiCreateListing, fetchActiveListings } from '@/data/listingsApi';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { checkReportRateLimit } from '@/lib/trust/moderation';
 import { submitReportToSupabase } from '@/services/reports';
 import type { ChatThread, Listing, ListingReport, ReportReason, SellerProfile } from '@/types';
@@ -19,7 +22,15 @@ type ListingsContextValue = {
   favorites: string[];
   currentUserId: string;
   myListings: Listing[];
+  /** True while the listings feed is loading (storage hydration or a Supabase fetch). */
+  isLoading: boolean;
+  /** Non-null when the last listings fetch failed (Supabase-backed mode only). */
+  error: string | null;
+  /** Re-fetch the listings feed. No-op in in-memory mode. */
+  refetch: () => Promise<void>;
   addListing: (input: NewListingInput) => Listing;
+  /** Create a listing remotely (uploads local photos). Falls back to the local addListing in demo mode. */
+  createListing: (input: NewListingInput) => Promise<Listing>;
   getListing: (id: string) => Listing | undefined;
   getSeller: (id: string) => SellerProfile | undefined;
   toggleFavorite: (id: string) => void;
@@ -105,12 +116,36 @@ function parseTimestamps(raw: string | null): number[] {
 }
 
 export function ListingsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [localListings, setLocalListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [reports, setReports] = useState<ListingReport[]>([]);
   const [reportTimestamps, setReportTimestamps] = useState<number[]>([]);
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
+
+  // Supabase-backed feed. When unconfigured these stay inert and the in-memory
+  // SEED_LISTINGS are shown instead, so the app runs identically without keys.
+  const [remoteListings, setRemoteListings] = useState<Listing[]>([]);
+  const [isLoadingRemote, setIsLoadingRemote] = useState(isSupabaseConfigured);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setIsLoadingRemote(true);
+    setRemoteError(null);
+    try {
+      setRemoteListings(await fetchActiveListings());
+    } catch (e) {
+      setRemoteError(e instanceof Error ? e.message : 'Failed to load listings');
+    } finally {
+      setIsLoadingRemote(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
 
   useEffect(() => {
     let isMounted = true;
@@ -157,7 +192,19 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(REPORT_TIMESTAMPS_KEY, JSON.stringify(reportTimestamps)).catch(() => undefined);
   }, [hasLoadedStorage, reportTimestamps]);
 
-  const listings = useMemo(() => [...localListings, ...SEED_LISTINGS].sort(byNewest), [localListings]);
+  // Configured → the DB is the single source of truth. Demo mode → seed plus
+  // locally-persisted posts ("post → see it" without a backend). Local demo
+  // posts are deliberately NOT merged into the real feed — they belong to no
+  // real account and would pollute it.
+  const listings = useMemo(
+    () =>
+      isSupabaseConfigured
+        ? [...remoteListings].sort(byNewest)
+        : [...localListings, ...SEED_LISTINGS].sort(byNewest),
+    [localListings, remoteListings],
+  );
+
+  const isLoading = !hasLoadedStorage || isLoadingRemote;
 
   const addListing = useCallback((input: NewListingInput) => {
     const listing: Listing = {
@@ -169,6 +216,24 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     setLocalListings((prev) => [listing, ...prev].sort(byNewest));
     return listing;
   }, []);
+
+  const userId = user?.id ?? null;
+
+  const createListing = useCallback(
+    async (input: NewListingInput): Promise<Listing> => {
+      // Demo fallback. Sell is AuthGated, so this branch is only reachable if
+      // the gate is ever relaxed or Supabase isn't configured.
+      if (!isSupabaseConfigured || !userId) return addListing(input);
+      const listing = await apiCreateListing(input, userId);
+      // Land it in provider state before resolving so getListing()/the success
+      // card's detail link work immediately; it survives the next refetch
+      // because the row is status='active' in the DB. The id filter dedupes
+      // against a refetch that may already have returned the new row.
+      setRemoteListings((prev) => [listing, ...prev.filter((l) => l.id !== listing.id)].sort(byNewest));
+      return listing;
+    },
+    [addListing, userId],
+  );
 
   const getListing = useCallback(
     (id: string) => listings.find((l) => l.id === id),
@@ -208,9 +273,12 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     return report;
   }, [reportTimestamps]);
 
+  // Signed in → the auth uid (remote rows carry it); demo mode → DEMO_USER_ID.
+  const ownerId = userId ?? DEMO_USER_ID;
+
   const myListings = useMemo(
-    () => listings.filter((l) => l.sellerId === DEMO_USER_ID),
-    [listings],
+    () => listings.filter((l) => l.sellerId === ownerId),
+    [listings, ownerId],
   );
 
   const value = useMemo<ListingsContextValue>(
@@ -218,16 +286,20 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       listings,
       threads,
       favorites,
-      currentUserId: DEMO_USER_ID,
+      currentUserId: ownerId,
       myListings,
+      isLoading,
+      error: remoteError,
+      refetch,
       addListing,
+      createListing,
       getListing,
       getSeller,
       toggleFavorite,
       isFavorite,
       submitReport,
     }),
-    [listings, threads, favorites, myListings, addListing, getListing, getSeller, toggleFavorite, isFavorite, submitReport],
+    [listings, threads, favorites, ownerId, myListings, isLoading, remoteError, refetch, addListing, createListing, getListing, getSeller, toggleFavorite, isFavorite, submitReport],
   );
 
   return <ListingsContext value={value}>{children}</ListingsContext>;
