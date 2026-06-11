@@ -27,7 +27,7 @@ export default function AuthScreen() {
   const router = useRouter();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
-  const { signInWithPhone, verifyOtp } = useAuth();
+  const { signInWithPhone, verifyOtp, isAuthenticated } = useAuth();
   const align = isRTL ? 'right' : 'left';
 
   const [step, setStep] = useState<'identify' | 'otp'>('identify');
@@ -36,6 +36,13 @@ export default function AuthScreen() {
   const [pending, setPending] = useState(false);
   const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
   const [resendIn, setResendIn] = useState(0);
+
+  // Close as soon as a session exists, however it arrived — code entry here,
+  // a magic-link click in another tab (web), or a restored session. The verify
+  // handler deliberately does NOT call router.back() itself.
+  useEffect(() => {
+    if (isAuthenticated) router.back();
+  }, [isAuthenticated, router]);
 
   // One interval for the whole otp step (not re-armed per tick); ticking at 0
   // is a same-value setState, which React bails out of.
@@ -66,8 +73,8 @@ export default function AuthScreen() {
     setErrorCode(null);
     const res = await verifyOtp(identifier, code);
     setPending(false);
-    if (res.ok) router.back();
-    else setErrorCode(res.code);
+    // Success closes via the isAuthenticated effect (single close path).
+    if (!res.ok) setErrorCode(res.code);
   };
 
   const editIdentifier = () => {
@@ -135,6 +142,12 @@ export default function AuthScreen() {
             <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
               {t('auth_otpSentTo', { target })}
             </ThemedText>
+
+            {AUTH_USES_EMAIL && (
+              <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
+                {t('auth_linkHint')}
+              </ThemedText>
+            )}
 
             <ThemedText type="smallBold" style={{ textAlign: align }}>
               {t('auth_otpLabel')}

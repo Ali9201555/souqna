@@ -43,8 +43,11 @@ export const supabase: SupabaseClient = isSupabaseConfigured
         ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }),
         autoRefreshToken: true,
         persistSession: true,
-        // No OAuth/magic-link redirect fragment to parse in a native/Expo app.
-        detectSessionInUrl: false,
+        // Web: pick the session out of a magic-link redirect (#access_token=…)
+        // so clicking the sign-in email lands the user back in the app signed
+        // in. Native has no URL fragment to parse — deep-link auth would need
+        // scheme plumbing we don't want for a dev-only email flow.
+        detectSessionInUrl: Platform.OS === 'web',
       },
     })
   : new Proxy({} as SupabaseClient, { get: notConfigured });

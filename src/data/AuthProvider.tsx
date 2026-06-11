@@ -157,7 +157,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (AUTH_USES_EMAIL) {
       const email = input.trim();
       if (!EMAIL_RE.test(email)) return { ok: false, code: 'invalid_phone' };
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      // On web, send the magic link back to this origin so clicking it lands
+      // in the app already signed in (detectSessionInUrl picks up the tokens).
+      // The origin must be allowed in Supabase URL Configuration — the default
+      // Site URL is http://localhost:3000, so dev-test with `--port 3000`.
+      const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
       return error ? { ok: false, code: mapError(error) } : { ok: true };
     }
     const phone = normalizeIraqiPhone(input);
