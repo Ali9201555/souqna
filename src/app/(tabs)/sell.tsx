@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
 import { AuthGate } from '@/components/auth-gate';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
+import { PhotoPicker } from '@/components/photo-picker';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -64,10 +64,6 @@ export default function SellScreen() {
       isMounted = false;
     };
   }, []);
-
-  const addPhoto = () =>
-    setImages((prev) => [...prev, `https://picsum.photos/seed/new-${Date.now()}-${prev.length}/800/600`]);
-  const removePhoto = (index: number) => setImages((prev) => prev.filter((_, i) => i !== index));
 
   const errorFor = (code: ListingDraftError): TKey => {
     if (code === 'title') return 'sell_guard_title';
@@ -159,20 +155,7 @@ export default function SellScreen() {
         )}
 
         <Field label={t('sell_photos')} align={align}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
-            <Pressable onPress={addPhoto} style={[styles.addPhoto, { borderColor: theme.border }]}>
-              <Ionicons name="camera" size={24} color={theme.tint} />
-              <ThemedText type="small" themeColor="tint">{t('sell_addPhoto')}</ThemedText>
-            </Pressable>
-            {images.map((uri, i) => (
-              <View key={uri} style={styles.thumbWrap}>
-                <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
-                <Pressable onPress={() => removePhoto(i)} style={[styles.thumbRemove, { backgroundColor: theme.danger }]}>
-                  <Ionicons name="close" size={14} color="#fff" />
-                </Pressable>
-              </View>
-            ))}
-          </ScrollView>
+          <PhotoPicker images={images} onChange={setImages} />
         </Field>
 
         <Field label={t('sell_field_title')} align={align}>
@@ -309,29 +292,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderRadius: Radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  photoRow: { gap: Spacing.two, paddingVertical: Spacing.one },
-  addPhoto: {
-    width: 96,
-    height: 96,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  thumbWrap: { width: 96, height: 96 },
-  thumb: { width: 96, height: 96, borderRadius: Radius.md },
-  thumbRemove: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   publish: {
     alignItems: 'center',
