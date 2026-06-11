@@ -15,7 +15,13 @@ export const Colors = {
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
     tint: '#0E8F6E',
+    /** Deeper brand shade — gradient end, pressed states. */
+    tintDeep: '#0A6B53',
+    /** Soft brand wash — chip/badge backgrounds, active tab pill. */
+    tintSoft: '#E7F4EF',
     onTint: '#FFFFFF',
+    /** Elevated card background (sits on `background` with a shadow). */
+    surface: '#FFFFFF',
     border: '#E6E8EB',
     price: '#0E8F6E',
     success: '#16A34A',
@@ -30,7 +36,10 @@ export const Colors = {
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
     tint: '#2BB893',
+    tintDeep: '#15745D',
+    tintSoft: '#11302A',
     onTint: '#04201A',
+    surface: '#17181B',
     border: '#2A2C30',
     price: '#2BB893',
     success: '#22C55E',
@@ -86,4 +95,23 @@ export const Radius = {
   lg: 16,
   xl: 24,
   pill: 999,
+} as const;
+
+/**
+ * Cross-platform `boxShadow` values (RN 0.76+ supports the CSS syntax on all
+ * platforms). Tuned for light surfaces; in dark mode they fade naturally and
+ * surfaces rely on `surface` + `border` for definition.
+ */
+export const Shadow = {
+  card: '0 1px 3px rgba(16, 24, 40, 0.06), 0 6px 18px rgba(16, 24, 40, 0.08)',
+  float: '0 10px 28px rgba(16, 24, 40, 0.22)',
+  fab: '0 6px 18px rgba(14, 143, 110, 0.42)',
+} as const;
+
+/** Shared spring configs so motion feels consistent app-wide. */
+export const Motion = {
+  /** Gentle settle — layout-ish moves, heart pop release. */
+  spring: { damping: 18, stiffness: 240, mass: 0.7 },
+  /** Snappy press feedback. */
+  springSnappy: { damping: 22, stiffness: 420, mass: 0.6 },
 } as const;

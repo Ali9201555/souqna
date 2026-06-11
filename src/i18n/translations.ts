@@ -74,6 +74,10 @@ const en = {
   sell_required: 'Please fill in the title, price, category and governorate.',
   sell_posting: 'Publishing…',
   sell_error: 'Couldn’t publish your listing. Check your connection and try again.',
+  sell_guard_title: 'Use a clear title between 6 and 90 characters.',
+  sell_guard_description: 'Keep the description under 1,500 characters.',
+  sell_guard_content: 'Remove payment links, outside contact details, or risky transfer terms.',
+  sell_guard_rateLimit: 'You have posted several listings today. Please try again tomorrow.',
 
   chats_title: 'Chats',
   chats_empty: 'No conversations yet',
@@ -112,6 +116,8 @@ const en = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'Save listing',
+
   common_currency: 'IQD',
   common_justNow: 'just now',
   common_minutesAgo: '{count} min ago',
@@ -119,6 +125,11 @@ const en = {
   common_daysAgo: '{count} d ago',
   common_yesterday: 'yesterday',
   common_close: 'Close',
+
+  state_loading: 'Loading…',
+  state_errorTitle: 'Something went wrong',
+  state_errorHint: 'Please check your connection and try again.',
+  state_retry: 'Retry',
 
   auth_title: 'Sign in',
   auth_phoneLabel: 'Phone number',
@@ -218,6 +229,10 @@ const ar: Partial<Record<TKey, string>> = {
   sell_required: 'يرجى تعبئة العنوان والسعر والقسم والمحافظة.',
   sell_posting: 'جارٍ النشر…',
   sell_error: 'تعذّر نشر إعلانك. تحقق من اتصالك وحاول مجدداً.',
+  sell_guard_title: 'استخدم عنواناً واضحاً بين 6 و90 حرفاً.',
+  sell_guard_description: 'اجعل الوصف أقل من 1,500 حرف.',
+  sell_guard_content: 'احذف روابط الدفع أو وسائل التواصل الخارجية أو عبارات التحويل الخطرة.',
+  sell_guard_rateLimit: 'نشرت عدة إعلانات اليوم. حاول مرة أخرى غداً.',
 
   chats_title: 'المحادثات',
   chats_empty: 'لا توجد محادثات بعد',
@@ -256,6 +271,8 @@ const ar: Partial<Record<TKey, string>> = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'حفظ الإعلان',
+
   common_currency: 'د.ع',
   common_justNow: 'الآن',
   common_minutesAgo: 'قبل {count} دقيقة',
@@ -263,6 +280,11 @@ const ar: Partial<Record<TKey, string>> = {
   common_daysAgo: 'قبل {count} يوم',
   common_yesterday: 'أمس',
   common_close: 'إغلاق',
+
+  state_loading: 'جارٍ التحميل…',
+  state_errorTitle: 'حدث خطأ ما',
+  state_errorHint: 'تحقق من اتصالك وحاول مرة أخرى.',
+  state_retry: 'إعادة المحاولة',
 
   auth_title: 'تسجيل الدخول',
   auth_phoneLabel: 'رقم الهاتف',
@@ -341,6 +363,11 @@ const ku: Partial<Record<TKey, string>> = {
   sell_publish: 'بڵاوکردنەوە',
   sell_posting: 'بڵاودەکرێتەوە…',
   sell_error: 'بڵاوکردنەوەی ڕیکلامەکەت سەرنەکەوت. پەیوەندیت بپشکنە و دووبارە هەوڵبدەرەوە.',
+  sell_required: 'تکایە ناونیشان، نرخ، بەش و پارێزگا پڕ بکەوە.',
+  sell_guard_title: 'ناونیشانێکی ڕوون لە نێوان 6 و90 پیت بەکاربهێنە.',
+  sell_guard_description: 'وەسفەکە لە 1,500 پیت کەمتر بهێڵەوە.',
+  sell_guard_content: 'لینکی پارەدان، پەیوەندی دەرەکی، یان وشەی گواستنەوەی مەترسیدار بسڕەوە.',
+  sell_guard_rateLimit: 'ئەمڕۆ چەند ڕیکلامێکت بڵاوکردووەتەوە. سبەی دووبارە هەوڵ بدەوە.',
 
   chats_title: 'گفتوگۆ',
   chats_empty: 'هێشتا گفتوگۆ نییە',
@@ -364,8 +391,15 @@ const ku: Partial<Record<TKey, string>> = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'پاشەکەوتکردنی ڕیکلام',
+
   common_currency: 'د.ع',
   common_close: 'داخستن',
+
+  state_loading: 'بارکردن…',
+  state_errorTitle: 'هەڵەیەک ڕوویدا',
+  state_errorHint: 'تکایە پەیوەندییەکەت بپشکنە و دووبارە هەوڵبدەوە.',
+  state_retry: 'هەوڵدانەوە',
 
   auth_title: 'چوونەژوورەوە',
   auth_phoneLabel: 'ژمارەی مۆبایل',

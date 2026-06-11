@@ -4,6 +4,7 @@ import { useMemo, useState, type ComponentProps } from 'react';
 import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ListingCard } from '@/components/listing-card';
+import { ListState } from '@/components/list-state';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -42,7 +43,7 @@ function FilterButton({ icon, label, onPress }: { icon: IoniconName; label: stri
 }
 
 export default function SearchScreen() {
-  const { listings } = useListings();
+  const { listings, isLoading, error, refetch } = useListings();
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const params = useLocalSearchParams<{ category?: string }>();
@@ -148,14 +149,18 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {results.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="search" size={40} color={theme.textSecondary} />
-          <ThemedText style={styles.emptyTitle}>{t('search_noResults')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.emptyHint}>
-            {t('search_noResultsHint')}
-          </ThemedText>
-        </View>
+      {error ? (
+        <ListState
+          variant="error"
+          title={t('state_errorTitle')}
+          hint={t('state_errorHint')}
+          actionLabel={t('state_retry')}
+          onAction={refetch}
+        />
+      ) : isLoading && listings.length === 0 ? (
+        <ListState variant="loading" title={t('state_loading')} />
+      ) : results.length === 0 ? (
+        <ListState variant="empty" icon="search" title={t('search_noResults')} hint={t('search_noResultsHint')} />
       ) : (
         <FlatList
           data={results}
@@ -224,7 +229,4 @@ const styles = StyleSheet.create({
   resultsRow: { alignItems: 'center', justifyContent: 'space-between' },
   column: { gap: Spacing.three, paddingHorizontal: Spacing.three },
   grid: { gap: Spacing.three, paddingBottom: Spacing.five },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.five },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  emptyHint: { textAlign: 'center' },
 });

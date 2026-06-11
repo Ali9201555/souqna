@@ -1,21 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
 
 import { ListingCard } from '@/components/listing-card';
+import { ListState } from '@/components/list-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useListings } from '@/data/ListingsProvider';
-import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import type { Listing } from '@/types';
 
 export default function SavedScreen() {
   const { favorites, getListing } = useListings();
   const { t, isRTL } = useI18n();
-  const theme = useTheme();
   const router = useRouter();
   const align = isRTL ? 'right' : 'left';
 
@@ -34,18 +32,13 @@ export default function SavedScreen() {
       <Stack.Screen options={{ title: t('profile_favorites'), headerTitleStyle: { fontSize: 18 } }} />
 
       {saved.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="heart-outline" size={48} color={theme.textSecondary} />
-          <ThemedText style={styles.emptyTitle}>{t('saved_empty')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.emptyHint}>
-            {t('saved_emptyHint')}
-          </ThemedText>
-          <Pressable
-            onPress={() => router.replace('/')}
-            style={({ pressed }) => [styles.browseBtn, { backgroundColor: theme.tint }, pressed && styles.pressed]}>
-            <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('saved_browse')}</ThemedText>
-          </Pressable>
-        </View>
+        <ListState
+          icon="heart-outline"
+          title={t('saved_empty')}
+          hint={t('saved_emptyHint')}
+          actionLabel={t('saved_browse')}
+          onAction={() => router.replace('/')}
+        />
       ) : (
         <FlatList
           data={saved}
@@ -71,14 +64,4 @@ const styles = StyleSheet.create({
   count: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three, paddingBottom: Spacing.two },
   column: { gap: Spacing.three, paddingHorizontal: Spacing.three },
   content: { gap: Spacing.three, paddingBottom: Spacing.five },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.five },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  emptyHint: { textAlign: 'center' },
-  browseBtn: {
-    marginTop: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
-  },
-  pressed: { opacity: 0.85 },
 });

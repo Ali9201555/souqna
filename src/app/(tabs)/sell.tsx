@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
 import { AuthGate } from '@/components/auth-gate';
@@ -14,6 +15,14 @@ import { GOVERNORATES, getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
+import {
+  checkPostRateLimit,
+  parsePostTimestamps,
+  POST_TIMESTAMPS_KEY,
+  validateListingDraft,
+  type ListingDraftError,
+} from '@/lib/trust/posting-guardrails';
+import type { TKey } from '@/i18n/translations';
 import type { ListingCondition } from '@/types';
 
 // Arabic/Kurdish keyboards can emit Eastern Arabic numerals; normalize to
@@ -40,23 +49,61 @@ export default function SellScreen() {
   const [condition, setCondition] = useState<ListingCondition>('used');
   const [images, setImages] = useState<string[]>([]);
   const [picker, setPicker] = useState<null | 'category' | 'governorate'>(null);
-  const [error, setError] = useState(false);
+  const [errorKey, setErrorKey] = useState<TKey | null>(null);
   const [submitError, setSubmitError] = useState(false);
   const [posting, setPosting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
+  const [postTimestamps, setPostTimestamps] = useState<number[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    AsyncStorage.getItem(POST_TIMESTAMPS_KEY).then((stored) => {
+      if (isMounted) setPostTimestamps(parsePostTimestamps(stored));
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const addPhoto = () =>
     setImages((prev) => [...prev, `https://picsum.photos/seed/new-${Date.now()}-${prev.length}/800/600`]);
   const removePhoto = (index: number) => setImages((prev) => prev.filter((_, i) => i !== index));
 
+  const errorFor = (code: ListingDraftError): TKey => {
+    if (code === 'title') return 'sell_guard_title';
+    if (code === 'description') return 'sell_guard_description';
+    if (code === 'content') return 'sell_guard_content';
+    return 'sell_required';
+  };
+
   const publish = async () => {
     if (posting) return;
     const priceNum = parseInt(toAsciiDigits(price).replace(/[^\d]/g, ''), 10);
-    if (!title.trim() || !categoryId || !governorateId || Number.isNaN(priceNum)) {
-      setError(true);
+    const draft = validateListingDraft({
+      title,
+      description: desc,
+      priceIqd: priceNum,
+      categoryId,
+      governorateId,
+      condition,
+    });
+
+    if (!draft.ok) {
+      setErrorKey(errorFor(draft.code));
       return;
     }
-    setError(false);
+    if (!categoryId || !governorateId) {
+      setErrorKey('sell_required');
+      return;
+    }
+
+    const limit = checkPostRateLimit(postTimestamps);
+    if (!limit.allowed) {
+      setErrorKey('sell_guard_rateLimit');
+      return;
+    }
+
+    setErrorKey(null);
     setSubmitError(false);
     setPosting(true);
     try {
@@ -70,6 +117,10 @@ export default function SellScreen() {
         condition,
         images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
       });
+      // Count toward the rate limit only on success — a failed network publish
+      // shouldn't burn the daily posting quota.
+      setPostTimestamps(limit.timestamps);
+      AsyncStorage.setItem(POST_TIMESTAMPS_KEY, JSON.stringify(limit.timestamps)).catch(() => undefined);
       setPostedId(listing.id);
       // Reset only on success — a failed publish keeps the draft for retry.
       setTitle('');
@@ -176,9 +227,9 @@ export default function SellScreen() {
           </View>
         </Field>
 
-        {error && (
+        {errorKey && (
           <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-            {t('sell_required')}
+            {t(errorKey)}
           </ThemedText>
         )}
         {submitError && (
