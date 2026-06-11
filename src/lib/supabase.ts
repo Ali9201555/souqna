@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { AppState, Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -28,8 +30,35 @@ function notConfigured(): never {
 /**
  * The Supabase client. Importing this module is always safe — when credentials
  * are missing, any *use* of the client throws (callers gate on
- * `isSupabaseConfigured`). Auth storage / session persistence lands in Phase 2.
+ * `isSupabaseConfigured`). Configured with AsyncStorage session persistence so
+ * a signed-in user survives app restarts (Phase 2 auth).
  */
 export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
+      auth: {
+        // Native: persist to AsyncStorage. Web: omit it so supabase-js uses its
+        // SSR-safe localStorage adapter — react-native-web's AsyncStorage reads
+        // `window` unguarded, which crashes static web export (it still persists
+        // to localStorage in the browser).
+        ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }),
+        autoRefreshToken: true,
+        persistSession: true,
+        // No OAuth/magic-link redirect fragment to parse in a native/Expo app.
+        detectSessionInUrl: false,
+      },
+    })
   : new Proxy({} as SupabaseClient, { get: notConfigured });
+
+// Native only: tie the token-refresh loop to app foreground so a backgrounded
+// timer can't silently let the access token expire. Guarded by
+// `isSupabaseConfigured` because the not-configured Proxy throws on `.auth`
+// access; skipped on web, where react-native-web manages visibility itself.
+if (isSupabaseConfigured && Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}

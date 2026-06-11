@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AuthProvider } from '@/data/AuthProvider';
 import { ListingsProvider } from '@/data/ListingsProvider';
 import { LanguageProvider } from '@/i18n/LanguageProvider';
 
@@ -16,16 +17,19 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <LanguageProvider>
-            <ListingsProvider>
-              <AnimatedSplashOverlay />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="listing/[id]" options={{ headerShown: true }} />
-                <Stack.Screen name="saved" options={{ headerShown: true }} />
-                <Stack.Screen name="discover" options={{ headerShown: false }} />
-              </Stack>
-              <StatusBar style="auto" />
-            </ListingsProvider>
+            <AuthProvider>
+              <ListingsProvider>
+                <AnimatedSplashOverlay />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="listing/[id]" options={{ headerShown: true }} />
+                  <Stack.Screen name="saved" options={{ headerShown: true }} />
+                  <Stack.Screen name="discover" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth" options={{ presentation: 'modal', headerShown: false }} />
+                </Stack>
+                <StatusBar style="auto" />
+              </ListingsProvider>
+            </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
       </SafeAreaProvider>
