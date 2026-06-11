@@ -5,7 +5,9 @@ import { useAuth } from '@/data/AuthProvider';
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
 import { createListing as apiCreateListing, fetchActiveListings } from '@/data/listingsApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import type { ChatThread, Listing, SellerProfile } from '@/types';
+import { checkReportRateLimit } from '@/lib/trust/moderation';
+import { submitReportToSupabase } from '@/services/reports';
+import type { ChatThread, Listing, ListingReport, ReportReason, SellerProfile } from '@/types';
 
 /**
  * Fields the seller fills in when posting. id/createdAt/sellerId are assigned
@@ -33,12 +35,15 @@ type ListingsContextValue = {
   getSeller: (id: string) => SellerProfile | undefined;
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
+  submitReport: (input: { listingId: string; reason: ReportReason; details?: string }) => Promise<ListingReport>;
 };
 
 const ListingsContext = createContext<ListingsContextValue | null>(null);
 
 const LOCAL_LISTINGS_KEY = 'souqna.localListings';
 const FAVORITES_KEY = 'souqna.favorites';
+const REPORTS_KEY = 'souqna.reports';
+const REPORT_TIMESTAMPS_KEY = 'souqna.reportTimestamps';
 
 const byNewest = (a: Listing, b: Listing) => b.createdAt - a.createdAt;
 
@@ -81,10 +86,41 @@ function parseFavorites(raw: string | null): string[] {
   }
 }
 
+function parseReports(raw: string | null): ListingReport[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((report): report is ListingReport => {
+      const value = report as Partial<ListingReport>;
+      return (
+        typeof value.id === 'string' &&
+        typeof value.listingId === 'string' &&
+        typeof value.reporterId === 'string' &&
+        typeof value.reason === 'string' &&
+        typeof value.createdAt === 'number'
+      );
+    }) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseTimestamps(raw: string | null): number[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((timestamp): timestamp is number => typeof timestamp === 'number') : [];
+  } catch {
+    return [];
+  }
+}
+
 export function ListingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [localListings, setLocalListings] = useState<Listing[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [reports, setReports] = useState<ListingReport[]>([]);
+  const [reportTimestamps, setReportTimestamps] = useState<number[]>([]);
   const [threads] = useState<ChatThread[]>(SEED_THREADS);
   const [hasLoadedStorage, setHasLoadedStorage] = useState(false);
 
@@ -114,11 +150,18 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([AsyncStorage.getItem(LOCAL_LISTINGS_KEY), AsyncStorage.getItem(FAVORITES_KEY)])
-      .then(([storedListings, storedFavorites]) => {
+    Promise.all([
+      AsyncStorage.getItem(LOCAL_LISTINGS_KEY),
+      AsyncStorage.getItem(FAVORITES_KEY),
+      AsyncStorage.getItem(REPORTS_KEY),
+      AsyncStorage.getItem(REPORT_TIMESTAMPS_KEY),
+    ])
+      .then(([storedListings, storedFavorites, storedReports, storedReportTimestamps]) => {
         if (!isMounted) return;
         setLocalListings(parseLocalListings(storedListings));
         setFavorites(parseFavorites(storedFavorites));
+        setReports(parseReports(storedReports));
+        setReportTimestamps(parseTimestamps(storedReportTimestamps));
       })
       .finally(() => {
         if (isMounted) setHasLoadedStorage(true);
@@ -138,6 +181,16 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     if (!hasLoadedStorage) return;
     AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites)).catch(() => undefined);
   }, [hasLoadedStorage, favorites]);
+
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(reports)).catch(() => undefined);
+  }, [hasLoadedStorage, reports]);
+
+  useEffect(() => {
+    if (!hasLoadedStorage) return;
+    AsyncStorage.setItem(REPORT_TIMESTAMPS_KEY, JSON.stringify(reportTimestamps)).catch(() => undefined);
+  }, [hasLoadedStorage, reportTimestamps]);
 
   // Configured → the DB is the single source of truth. Demo mode → seed plus
   // locally-persisted posts ("post → see it" without a backend). Local demo
@@ -197,6 +250,29 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
 
+  const submitReport = useCallback(async (input: { listingId: string; reason: ReportReason; details?: string }) => {
+    const now = Date.now();
+    const limit = checkReportRateLimit(reportTimestamps, now);
+    if (!limit.allowed) {
+      throw new Error('rate_limited');
+    }
+
+    const report: ListingReport = {
+      id: `local-report-${now}`,
+      listingId: input.listingId,
+      reporterId: DEMO_USER_ID,
+      reason: input.reason,
+      details: input.details,
+      status: 'open',
+      createdAt: now,
+    };
+
+    await submitReportToSupabase({ ...input, reporterId: DEMO_USER_ID });
+    setReports((prev) => [report, ...prev]);
+    setReportTimestamps(limit.timestamps);
+    return report;
+  }, [reportTimestamps]);
+
   // Signed in → the auth uid (remote rows carry it); demo mode → DEMO_USER_ID.
   const ownerId = userId ?? DEMO_USER_ID;
 
@@ -221,8 +297,9 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       getSeller,
       toggleFavorite,
       isFavorite,
+      submitReport,
     }),
-    [listings, threads, favorites, ownerId, myListings, isLoading, remoteError, refetch, addListing, createListing, getListing, getSeller, toggleFavorite, isFavorite],
+    [listings, threads, favorites, ownerId, myListings, isLoading, remoteError, refetch, addListing, createListing, getListing, getSeller, toggleFavorite, isFavorite, submitReport],
   );
 
   return <ListingsContext value={value}>{children}</ListingsContext>;

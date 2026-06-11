@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { ReportListingSheet } from '@/components/report-listing-sheet';
 import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -30,12 +31,15 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getListing, getSeller, isFavorite, toggleFavorite } = useListings();
+  const { getListing, getSeller, isFavorite, toggleFavorite, submitReport } = useListings();
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [activeImage, setActiveImage] = useState(0);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   const align = isRTL ? 'right' : 'left';
   const rowDir = isRTL ? 'row-reverse' : 'row';
@@ -72,6 +76,18 @@ export default function ListingDetailScreen() {
   };
   const message = () => {
     if (seller?.phone) Linking.openURL(`https://wa.me/${seller.phone.replace(/[^\d]/g, '')}`);
+  };
+  const report = async (reason: Parameters<typeof submitReport>[0]['reason'], details: string) => {
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await submitReport({ listingId: listing.id, reason, details });
+      setIsReportOpen(false);
+    } catch (error) {
+      setReportError(error instanceof Error && error.message === 'rate_limited' ? t('report_error_rateLimit') : t('report_error_submit'));
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   return (
@@ -197,7 +213,12 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
-          <Pressable style={[styles.reportRow, { flexDirection: rowDir }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('detail_report')}
+            testID="listing-report-button"
+            onPress={() => setIsReportOpen(true)}
+            style={[styles.reportRow, { flexDirection: rowDir }]}>
             <Ionicons name="flag-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="small" themeColor="textSecondary">
               {t('detail_report')}
@@ -205,6 +226,14 @@ export default function ListingDetailScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <ReportListingSheet
+        visible={isReportOpen}
+        isSubmitting={isSubmittingReport}
+        error={reportError}
+        onSubmit={report}
+        onClose={() => setIsReportOpen(false)}
+      />
 
       <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.background }}>
         <View style={[styles.actionBar, { borderTopColor: theme.border, flexDirection: rowDir }]}>

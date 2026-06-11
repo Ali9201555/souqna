@@ -16,6 +16,7 @@ export interface Governorate {
 }
 
 export type ListingCondition = 'new' | 'used';
+export type ReportReason = 'scam' | 'prohibited' | 'duplicate' | 'sold' | 'offensive' | 'other';
 
 export interface SellerProfile {
   id: string;
@@ -43,6 +44,17 @@ export interface Listing {
   /** Remote image URLs. */
   images: string[];
   sellerId: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+}
+
+export interface ListingReport {
+  id: string;
+  listingId: string;
+  reporterId: string;
+  reason: ReportReason;
+  details?: string;
+  status: 'open' | 'reviewed' | 'dismissed';
   /** Epoch milliseconds. */
   createdAt: number;
 }
