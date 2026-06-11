@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
+import { AuthGate } from '@/components/auth-gate';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PhotoPicker } from '@/components/photo-picker';
 import { Screen } from '@/components/screen';
@@ -24,8 +25,16 @@ import {
 import type { TKey } from '@/i18n/translations';
 import type { ListingCondition } from '@/types';
 
+// Arabic/Kurdish keyboards can emit Eastern Arabic numerals; normalize to
+// ASCII before parsing so the price isn't silently rejected.
+function toAsciiDigits(value: string): string {
+  return value
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+}
+
 export default function SellScreen() {
-  const { addListing } = useListings();
+  const { createListing } = useListings();
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
@@ -41,6 +50,8 @@ export default function SellScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [picker, setPicker] = useState<null | 'category' | 'governorate'>(null);
   const [errorKey, setErrorKey] = useState<TKey | null>(null);
+  const [submitError, setSubmitError] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [postedId, setPostedId] = useState<string | null>(null);
   const [postTimestamps, setPostTimestamps] = useState<number[]>([]);
 
@@ -62,7 +73,8 @@ export default function SellScreen() {
   };
 
   const publish = async () => {
-    const priceNum = parseInt(price.replace(/[^\d]/g, ''), 10);
+    if (posting) return;
+    const priceNum = parseInt(toAsciiDigits(price).replace(/[^\d]/g, ''), 10);
     const draft = validateListingDraft({
       title,
       description: desc,
@@ -87,28 +99,39 @@ export default function SellScreen() {
       return;
     }
 
-    const listing = addListing({
-      title: title.trim(),
-      description: desc.trim(),
-      priceIqd: priceNum,
-      negotiable,
-      categoryId,
-      governorateId,
-      condition,
-      images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
-    });
-    setPostTimestamps(limit.timestamps);
-    AsyncStorage.setItem(POST_TIMESTAMPS_KEY, JSON.stringify(limit.timestamps)).catch(() => undefined);
     setErrorKey(null);
-    setPostedId(listing.id);
-    setTitle('');
-    setDesc('');
-    setPrice('');
-    setNegotiable(false);
-    setCategoryId(null);
-    setGovernorateId(null);
-    setCondition('used');
-    setImages([]);
+    setSubmitError(false);
+    setPosting(true);
+    try {
+      const listing = await createListing({
+        title: title.trim(),
+        description: desc.trim(),
+        priceIqd: priceNum,
+        negotiable,
+        categoryId,
+        governorateId,
+        condition,
+        images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
+      });
+      // Count toward the rate limit only on success — a failed network publish
+      // shouldn't burn the daily posting quota.
+      setPostTimestamps(limit.timestamps);
+      AsyncStorage.setItem(POST_TIMESTAMPS_KEY, JSON.stringify(limit.timestamps)).catch(() => undefined);
+      setPostedId(listing.id);
+      // Reset only on success — a failed publish keeps the draft for retry.
+      setTitle('');
+      setDesc('');
+      setPrice('');
+      setNegotiable(false);
+      setCategoryId(null);
+      setGovernorateId(null);
+      setCondition('used');
+      setImages([]);
+    } catch {
+      setSubmitError(true);
+    } finally {
+      setPosting(false);
+    }
   };
 
   const categoryOptions: PickerOption[] = CATEGORIES.map((c) => ({ id: c.id, label: c.name[lang] }));
@@ -117,6 +140,7 @@ export default function SellScreen() {
 
   return (
     <Screen title={t('sell_title')}>
+      <AuthGate title={t('gate_sell_title')} message={t('gate_sell_message')}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {postedId && (
           <View style={[styles.successCard, { backgroundColor: theme.tint }]}>
@@ -191,14 +215,25 @@ export default function SellScreen() {
             {t(errorKey)}
           </ThemedText>
         )}
+        {submitError && (
+          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+            {t('sell_error')}
+          </ThemedText>
+        )}
 
-        <Pressable onPress={publish} style={[styles.publish, { backgroundColor: theme.tint }]}>
-          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>{t('sell_publish')}</ThemedText>
+        <Pressable
+          onPress={() => void publish()}
+          disabled={posting}
+          style={[styles.publish, { backgroundColor: theme.tint, opacity: posting ? 0.6 : 1 }]}>
+          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>
+            {posting ? t('sell_posting') : t('sell_publish')}
+          </ThemedText>
         </Pressable>
       </ScrollView>
 
       <PickerSheet visible={picker === 'category'} title={t('sell_field_category')} options={categoryOptions} selectedId={categoryId} onSelect={setCategoryId} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'governorate'} title={t('sell_field_governorate')} options={govOptions} selectedId={governorateId} onSelect={setGovernorateId} onClose={() => setPicker(null)} />
+      </AuthGate>
     </Screen>
   );
 }

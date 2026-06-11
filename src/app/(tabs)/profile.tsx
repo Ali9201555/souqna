@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { type ComponentProps, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/data/AuthProvider';
 import { useListings } from '@/data/ListingsProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
@@ -18,11 +19,15 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export default function ProfileScreen() {
   const { myListings, favorites } = useListings();
+  const { isAuthenticated, user, profile, signOut } = useAuth();
   const { t, lang, setLang, isRTL } = useI18n();
   const theme = useTheme();
   const router = useRouter();
   const align = isRTL ? 'right' : 'left';
-  const [showSoon, setShowSoon] = useState(false);
+
+  const displayName = profile?.name?.trim() || user?.phone || user?.email || t('profile_guest');
+  const contact = user?.phone ?? user?.email ?? null;
+  const showContact = contact != null && contact !== displayName;
 
   const langs: { id: Language; label: string }[] = [
     { id: 'ar', label: t('lang_ar') },
@@ -34,25 +39,46 @@ export default function ProfileScreen() {
     <Screen title={t('tab_profile')}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <View style={[styles.identity, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <Avatar name={t('profile_guest')} color={theme.textSecondary} size={56} />
-            <View style={styles.flex}>
-              <ThemedText style={[styles.name, { textAlign: align }]}>{t('profile_guest')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-                {t('profile_signInHint')}
-              </ThemedText>
-            </View>
-          </View>
-          <Pressable
-            onPress={() => setShowSoon(true)}
-            style={[styles.signIn, { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <Ionicons name="call" size={18} color={theme.onTint} />
-            <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('profile_signIn')}</ThemedText>
-          </Pressable>
-          {showSoon && (
-            <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-              {t('profile_soon')}
-            </ThemedText>
+          {isAuthenticated ? (
+            <>
+              <View style={[styles.identity, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Avatar name={displayName} color={profile?.avatarColor ?? theme.tint} size={56} />
+                <View style={styles.flex}>
+                  <ThemedText style={[styles.name, { textAlign: align }]} numberOfLines={1}>
+                    {displayName}
+                  </ThemedText>
+                  {showContact && (
+                    <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
+                      {contact}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+              <Pressable
+                onPress={() => signOut()}
+                style={[styles.signOut, { borderColor: theme.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+                <ThemedText style={{ color: theme.danger, fontWeight: '700' }}>{t('auth_signOut')}</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <View style={[styles.identity, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Avatar name={t('profile_guest')} color={theme.textSecondary} size={56} />
+                <View style={styles.flex}>
+                  <ThemedText style={[styles.name, { textAlign: align }]}>{t('profile_guest')}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
+                    {t('profile_signInHint')}
+                  </ThemedText>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => router.push('/auth')}
+                style={[styles.signIn, { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Ionicons name="call" size={18} color={theme.onTint} />
+                <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('profile_signIn')}</ThemedText>
+              </Pressable>
+            </>
           )}
         </View>
 
@@ -186,6 +212,7 @@ const styles = StyleSheet.create({
   identity: { alignItems: 'center', gap: Spacing.three },
   name: { fontSize: 18, fontWeight: '700' },
   signIn: { alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three, borderRadius: Radius.md },
+  signOut: { alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three, borderRadius: Radius.md, borderWidth: StyleSheet.hairlineWidth },
   section: { gap: Spacing.two },
   langRow: { gap: Spacing.two },
   langPill: { flex: 1, alignItems: 'center', paddingVertical: Spacing.three, borderRadius: Radius.md, borderWidth: 1 },
