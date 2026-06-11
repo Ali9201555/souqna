@@ -72,6 +72,12 @@ const en = {
   sell_publish: 'Publish',
   sell_success: 'Your listing is live!',
   sell_required: 'Please fill in the title, price, category and governorate.',
+  sell_posting: 'Publishing…',
+  sell_error: 'Couldn’t publish your listing. Check your connection and try again.',
+  sell_guard_title: 'Use a clear title between 6 and 90 characters.',
+  sell_guard_description: 'Keep the description under 1,500 characters.',
+  sell_guard_content: 'Remove payment links, outside contact details, or risky transfer terms.',
+  sell_guard_rateLimit: 'You have posted several listings today. Please try again tomorrow.',
 
   chats_title: 'Chats',
   chats_empty: 'No conversations yet',
@@ -81,7 +87,6 @@ const en = {
   profile_guest: 'Guest',
   profile_signIn: 'Sign in with your phone',
   profile_signInHint: 'Verify your number to post listings and chat with sellers.',
-  profile_soon: 'Phone sign-in goes live when the backend is connected.',
   profile_myListings: 'My listings',
   profile_favorites: 'Saved',
   profile_noFavorites: 'Save listings from search',
@@ -111,6 +116,8 @@ const en = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'Save listing',
+
   common_currency: 'IQD',
   common_justNow: 'just now',
   common_minutesAgo: '{count} min ago',
@@ -118,6 +125,37 @@ const en = {
   common_daysAgo: '{count} d ago',
   common_yesterday: 'yesterday',
   common_close: 'Close',
+
+  state_loading: 'Loading…',
+  state_errorTitle: 'Something went wrong',
+  state_errorHint: 'Please check your connection and try again.',
+  state_retry: 'Retry',
+
+  auth_title: 'Sign in',
+  auth_phoneLabel: 'Phone number',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'Email',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'Send code',
+  auth_otpLabel: 'Verification code',
+  auth_otpPlaceholder: '6-digit code',
+  auth_otpSentTo: 'We sent a code to {target}',
+  auth_verify: 'Verify',
+  auth_wrongNumber: 'Wrong number?',
+  auth_resend: 'Resend code',
+  auth_resendIn: 'Resend in {seconds}s',
+  auth_signOut: 'Sign out',
+  auth_err_invalid_phone: 'Enter a valid Iraqi mobile number',
+  auth_err_invalid_email: 'Enter a valid email address',
+  auth_err_invalid_code: 'Incorrect or expired code',
+  auth_err_rate_limited: 'Too many attempts. Try again later',
+  auth_err_expired: 'This code has expired',
+  auth_err_network: 'Network error. Check your connection',
+  auth_err_unknown: 'Something went wrong',
+
+  gate_sell_title: 'Sign in to sell',
+  gate_sell_message: 'Create a free account to post your listing',
+  gate_cta: 'Sign in',
 } satisfies Record<string, string>;
 
 export type TKey = keyof typeof en;
@@ -189,6 +227,12 @@ const ar: Partial<Record<TKey, string>> = {
   sell_publish: 'نشر الإعلان',
   sell_success: 'تم نشر إعلانك!',
   sell_required: 'يرجى تعبئة العنوان والسعر والقسم والمحافظة.',
+  sell_posting: 'جارٍ النشر…',
+  sell_error: 'تعذّر نشر إعلانك. تحقق من اتصالك وحاول مجدداً.',
+  sell_guard_title: 'استخدم عنواناً واضحاً بين 6 و90 حرفاً.',
+  sell_guard_description: 'اجعل الوصف أقل من 1,500 حرف.',
+  sell_guard_content: 'احذف روابط الدفع أو وسائل التواصل الخارجية أو عبارات التحويل الخطرة.',
+  sell_guard_rateLimit: 'نشرت عدة إعلانات اليوم. حاول مرة أخرى غداً.',
 
   chats_title: 'المحادثات',
   chats_empty: 'لا توجد محادثات بعد',
@@ -198,7 +242,6 @@ const ar: Partial<Record<TKey, string>> = {
   profile_guest: 'زائر',
   profile_signIn: 'سجّل الدخول برقم هاتفك',
   profile_signInHint: 'وثّق رقمك لنشر الإعلانات والتحدث مع البائعين.',
-  profile_soon: 'تسجيل الدخول بالهاتف سيُفعّل عند ربط الخادم.',
   profile_myListings: 'إعلاناتي',
   profile_favorites: 'المحفوظة',
   profile_noFavorites: 'احفظ الإعلانات من البحث',
@@ -228,6 +271,8 @@ const ar: Partial<Record<TKey, string>> = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'حفظ الإعلان',
+
   common_currency: 'د.ع',
   common_justNow: 'الآن',
   common_minutesAgo: 'قبل {count} دقيقة',
@@ -235,6 +280,37 @@ const ar: Partial<Record<TKey, string>> = {
   common_daysAgo: 'قبل {count} يوم',
   common_yesterday: 'أمس',
   common_close: 'إغلاق',
+
+  state_loading: 'جارٍ التحميل…',
+  state_errorTitle: 'حدث خطأ ما',
+  state_errorHint: 'تحقق من اتصالك وحاول مرة أخرى.',
+  state_retry: 'إعادة المحاولة',
+
+  auth_title: 'تسجيل الدخول',
+  auth_phoneLabel: 'رقم الهاتف',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'البريد الإلكتروني',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'إرسال الرمز',
+  auth_otpLabel: 'رمز التحقق',
+  auth_otpPlaceholder: 'رمز من 6 أرقام',
+  auth_otpSentTo: 'أرسلنا رمزًا إلى {target}',
+  auth_verify: 'تحقق',
+  auth_wrongNumber: 'رقم خاطئ؟',
+  auth_resend: 'إعادة إرسال الرمز',
+  auth_resendIn: 'إعادة الإرسال خلال {seconds} ثانية',
+  auth_signOut: 'تسجيل الخروج',
+  auth_err_invalid_phone: 'أدخل رقم هاتف عراقي صحيح',
+  auth_err_invalid_email: 'أدخل بريدًا إلكترونيًا صحيحًا',
+  auth_err_invalid_code: 'الرمز غير صحيح أو منتهي الصلاحية',
+  auth_err_rate_limited: 'محاولات كثيرة. حاول لاحقًا',
+  auth_err_expired: 'انتهت صلاحية هذا الرمز',
+  auth_err_network: 'خطأ في الشبكة. تحقق من اتصالك',
+  auth_err_unknown: 'حدث خطأ ما',
+
+  gate_sell_title: 'سجّل دخولك للبيع',
+  gate_sell_message: 'أنشئ حسابًا مجانيًا لنشر إعلانك',
+  gate_cta: 'تسجيل الدخول',
 };
 
 // Kurdish (Sorani) — best-effort, pending native review. Falls back to English.
@@ -285,6 +361,13 @@ const ku: Partial<Record<TKey, string>> = {
 
   sell_title: 'ڕیکلامێک دابنێ',
   sell_publish: 'بڵاوکردنەوە',
+  sell_posting: 'بڵاودەکرێتەوە…',
+  sell_error: 'بڵاوکردنەوەی ڕیکلامەکەت سەرنەکەوت. پەیوەندیت بپشکنە و دووبارە هەوڵبدەرەوە.',
+  sell_required: 'تکایە ناونیشان، نرخ، بەش و پارێزگا پڕ بکەوە.',
+  sell_guard_title: 'ناونیشانێکی ڕوون لە نێوان 6 و90 پیت بەکاربهێنە.',
+  sell_guard_description: 'وەسفەکە لە 1,500 پیت کەمتر بهێڵەوە.',
+  sell_guard_content: 'لینکی پارەدان، پەیوەندی دەرەکی، یان وشەی گواستنەوەی مەترسیدار بسڕەوە.',
+  sell_guard_rateLimit: 'ئەمڕۆ چەند ڕیکلامێکت بڵاوکردووەتەوە. سبەی دووبارە هەوڵ بدەوە.',
 
   chats_title: 'گفتوگۆ',
   chats_empty: 'هێشتا گفتوگۆ نییە',
@@ -308,8 +391,41 @@ const ku: Partial<Record<TKey, string>> = {
   lang_ku: 'کوردی',
   lang_en: 'English',
 
+  a11y_saveListing: 'پاشەکەوتکردنی ڕیکلام',
+
   common_currency: 'د.ع',
   common_close: 'داخستن',
+
+  state_loading: 'بارکردن…',
+  state_errorTitle: 'هەڵەیەک ڕوویدا',
+  state_errorHint: 'تکایە پەیوەندییەکەت بپشکنە و دووبارە هەوڵبدەوە.',
+  state_retry: 'هەوڵدانەوە',
+
+  auth_title: 'چوونەژوورەوە',
+  auth_phoneLabel: 'ژمارەی مۆبایل',
+  auth_phonePlaceholder: '7XX XXX XXXX',
+  auth_emailLabel: 'ئیمەیل',
+  auth_emailPlaceholder: 'you@example.com',
+  auth_sendCode: 'ناردنی کۆد',
+  auth_otpLabel: 'کۆدی پشتڕاستکردنەوە',
+  auth_otpPlaceholder: 'کۆدی ٦ ژمارەیی',
+  auth_otpSentTo: 'کۆدێکمان نارد بۆ {target}',
+  auth_verify: 'پشتڕاستکردنەوە',
+  auth_wrongNumber: 'ژمارە هەڵەیە؟',
+  auth_resend: 'دووبارە ناردنەوەی کۆد',
+  auth_resendIn: 'دووبارە ناردنەوە لە {seconds} چرکە',
+  auth_signOut: 'چوونەدەرەوە',
+  auth_err_invalid_phone: 'ژمارەیەکی دروستی مۆبایلی عێراقی بنووسە',
+  auth_err_invalid_email: 'ئیمەیلێکی دروست بنووسە',
+  auth_err_invalid_code: 'کۆد هەڵەیە یان بەسەرچووە',
+  auth_err_rate_limited: 'هەوڵی زۆر. دواتر هەوڵبدەرەوە',
+  auth_err_expired: 'ئەم کۆدە بەسەرچووە',
+  auth_err_network: 'هەڵەی تۆڕ. پەیوەندیت بپشکنە',
+  auth_err_unknown: 'هەڵەیەک ڕوویدا',
+
+  gate_sell_title: 'بۆ فرۆشتن بچۆ ژوورەوە',
+  gate_sell_message: 'هەژمارێکی بێبەرامبەر دروستبکە بۆ بڵاوکردنەوەی ڕیکلامەکەت',
+  gate_cta: 'چوونەژوورەوە',
 };
 
 export const translations: Record<Language, Partial<Record<TKey, string>>> = {
