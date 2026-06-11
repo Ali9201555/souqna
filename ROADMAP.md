@@ -21,21 +21,26 @@ verification gate and git workflow.
 - [x] Add `@supabase/supabase-js`; create `src/lib/supabase.ts` reading
       `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (document in
       `.env.example`, never commit real keys)
-- [ ] Apply migrations + `seed.sql` to a Supabase project
-      (`supabase db push` / SQL editor)
-- [ ] Swap `ListingsProvider` internals to query Supabase (listings feed,
+- [x] Apply migrations + `seed.sql` to a Supabase project (live: Frankfurt,
+      0001–0005 applied; 0004 locks down profiles PII, 0005 caps the bucket)
+- [x] Swap `ListingsProvider` internals to query Supabase (listings feed,
       single listing, create listing) — keep the same hook surface so screens
       don't change
-- [ ] Upload listing photos to the `listing-images` storage bucket from the
-      Sell screen (replace the picsum placeholder URLs)
-- [ ] Loading / empty / error states for network calls
+- [x] Upload listing photos to the `listing-images` storage bucket from the
+      Sell screen (expo-image-picker → ArrayBuffer upload; http(s) URLs pass
+      through)
+- [x] Loading / empty / error states for network calls (`ListState`)
 
 ## Phase 2 — Auth (phone / OTP)
 
-- [ ] Phone sign-in flow (Supabase OTP) behind the Profile "sign in" button
-- [ ] Profile auto-created via the `handle_new_user` trigger; edit name/photo
-- [ ] Gate Sell + starting a chat behind auth; show sign-in prompt otherwise
-- [ ] Persist session (AsyncStorage) and restore on launch
+- [x] Phone sign-in flow (Supabase OTP) behind the Profile "sign in" button
+      (phone-first; dev email-OTP path until Twilio — e2e pends the
+      `{{ .Token }}` email-template step in the dashboard)
+- [ ] Profile auto-created via the `handle_new_user` trigger (done); edit
+      name/photo UI still to build
+- [ ] Gate Sell behind auth (done via `AuthGate`); gate starting a chat when
+      chat lands (Phase 3)
+- [x] Persist session (AsyncStorage) and restore on launch
 
 ## Phase 3 — Chat (realtime)
 
@@ -54,8 +59,10 @@ verification gate and git workflow.
 ## Phase 5 — Trust & safety
 
 - [ ] Report flow writes to `reports`; basic admin/triage (service-role tool)
-- [ ] Seller verification badge driven by `is_phone_verified`
-- [ ] Rate-limit posting / reporting; basic content checks
+      (local-first flow + triage script landed; remote insert needs routing
+      through the shared authed client — currently skips)
+- [x] Seller verification badge driven by `is_phone_verified`
+- [x] Rate-limit posting / reporting; basic content checks
 
 ## Phase 6 — Launch hardening
 
