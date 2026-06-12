@@ -2,6 +2,22 @@ import type { TKey } from '@/i18n/translations';
 
 type Translate = (key: TKey, vars?: Record<string, string | number>) => string;
 
+/**
+ * Arabic/Kurdish keyboards can emit Eastern Arabic numerals; normalize to
+ * ASCII so numeric parsing doesn't silently reject them.
+ */
+export function toAsciiDigits(value: string): string {
+  return value
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+}
+
+/** Parse a user-typed integer (any digit script); NaN-safe → undefined. */
+export function parseIntField(value: string): number | undefined {
+  const n = parseInt(toAsciiDigits(value).replace(/[^\d]/g, ''), 10);
+  return Number.isNaN(n) ? undefined : n;
+}
+
 export function groupThousands(n: number): string {
   return Math.round(n)
     .toString()

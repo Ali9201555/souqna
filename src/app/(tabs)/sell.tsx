@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
+import { AttributeFields } from '@/components/attribute-fields';
 import { AuthGate } from '@/components/auth-gate';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PhotoPicker } from '@/components/photo-picker';
@@ -22,15 +23,15 @@ import {
   validateListingDraft,
   type ListingDraftError,
 } from '@/lib/trust/posting-guardrails';
+import { toAsciiDigits } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
-import type { ListingCondition } from '@/types';
+import type { ListingAttributes, ListingCondition } from '@/types';
 
-// Arabic/Kurdish keyboards can emit Eastern Arabic numerals; normalize to
-// ASCII before parsing so the price isn't silently rejected.
-function toAsciiDigits(value: string): string {
-  return value
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+/** Empty attribute shell for categories that collect structured facts. */
+function attributeShell(categoryId: string | null): ListingAttributes | undefined {
+  if (categoryId === 'vehicles') return { kind: 'vehicle' };
+  if (categoryId === 'realestate') return { kind: 'property', dealType: 'sale' };
+  return undefined;
 }
 
 export default function SellScreen() {
@@ -47,6 +48,7 @@ export default function SellScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [governorateId, setGovernorateId] = useState<string | null>(null);
   const [condition, setCondition] = useState<ListingCondition>('used');
+  const [attributes, setAttributes] = useState<ListingAttributes | undefined>(undefined);
   const [images, setImages] = useState<string[]>([]);
   const [picker, setPicker] = useState<null | 'category' | 'governorate'>(null);
   const [errorKey, setErrorKey] = useState<TKey | null>(null);
@@ -111,6 +113,7 @@ export default function SellScreen() {
         categoryId,
         governorateId,
         condition,
+        attributes,
         images: images.length ? images : [`https://picsum.photos/seed/new-${Date.now()}/800/600`],
       });
       // Count toward the rate limit only on success — a failed network publish
@@ -126,6 +129,7 @@ export default function SellScreen() {
       setCategoryId(null);
       setGovernorateId(null);
       setCondition('used');
+      setAttributes(undefined);
       setImages([]);
     } catch {
       setSubmitError(true);
@@ -210,6 +214,8 @@ export default function SellScreen() {
           </View>
         </Field>
 
+        <AttributeFields value={attributes} onChange={setAttributes} />
+
         {errorKey && (
           <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
             {t(errorKey)}
@@ -231,7 +237,19 @@ export default function SellScreen() {
         </Pressable>
       </ScrollView>
 
-      <PickerSheet visible={picker === 'category'} title={t('sell_field_category')} options={categoryOptions} selectedId={categoryId} onSelect={setCategoryId} onClose={() => setPicker(null)} />
+      <PickerSheet
+        visible={picker === 'category'}
+        title={t('sell_field_category')}
+        options={categoryOptions}
+        selectedId={categoryId}
+        onSelect={(id) => {
+          setCategoryId(id);
+          // Switching category swaps the structured-facts form; stale facts
+          // from another category must never ride along.
+          setAttributes(attributeShell(id));
+        }}
+        onClose={() => setPicker(null)}
+      />
       <PickerSheet visible={picker === 'governorate'} title={t('sell_field_governorate')} options={govOptions} selectedId={governorateId} onSelect={setGovernorateId} onClose={() => setPicker(null)} />
       </AuthGate>
     </Screen>
