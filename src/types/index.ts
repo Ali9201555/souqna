@@ -31,6 +31,39 @@ export interface SellerProfile {
   isPhoneVerified: boolean;
 }
 
+export type Transmission = 'automatic' | 'manual';
+export type FuelType = 'gasoline' | 'diesel' | 'hybrid' | 'electric' | 'lpg';
+
+/** Structured facts for the Cars section. All numeric values are JSON numbers. */
+export interface VehicleAttributes {
+  kind: 'vehicle';
+  /** Lowercase make id from VEHICLE_MAKES (e.g. 'toyota'), or 'other'. */
+  make?: string;
+  /** Free-text model, e.g. "كورولا XLI". */
+  model?: string;
+  year?: number;
+  mileageKm?: number;
+  transmission?: Transmission;
+  fuel?: FuelType;
+}
+
+export type DealType = 'sale' | 'rent';
+export type PropertyType = 'house' | 'apartment' | 'land' | 'commercial' | 'farm';
+
+/** Structured facts for the Real-estate section. `rent` prices are monthly IQD. */
+export interface PropertyAttributes {
+  kind: 'property';
+  dealType: DealType;
+  propertyType?: PropertyType;
+  bedrooms?: number;
+  bathrooms?: number;
+  /** Plot/built area in square meters. */
+  areaM2?: number;
+  furnished?: boolean;
+}
+
+export type ListingAttributes = VehicleAttributes | PropertyAttributes;
+
 export interface Listing {
   id: string;
   title: string;
@@ -46,6 +79,8 @@ export interface Listing {
   sellerId: string;
   /** Epoch milliseconds. */
   createdAt: number;
+  /** Category-specific structured facts (vehicles / realestate). */
+  attributes?: ListingAttributes;
 }
 
 export interface ListingReport {

@@ -1,6 +1,6 @@
 import type { NewListingInput } from '@/data/ListingsProvider';
 import { supabase } from '@/lib/supabase';
-import type { Listing } from '@/types';
+import type { Listing, ListingAttributes } from '@/types';
 
 /**
  * Supabase data layer for listings. These functions accept/return domain
@@ -23,6 +23,7 @@ type ListingRow = {
   condition: 'new' | 'used';
   status: 'active' | 'sold' | 'removed';
   created_at: string;
+  attributes: Record<string, unknown> | null;
 };
 
 type ListingImageRow = { url: string; sort_order: number };
@@ -31,6 +32,12 @@ type ListingRowWithImages = ListingRow & { listing_images: ListingImageRow[] | n
 
 /** Pull `*` plus the embedded images in one round-trip. */
 const SELECT_WITH_IMAGES = '*, listing_images(url, sort_order)';
+
+/** Accept only the discriminated shapes the client knows; anything else → undefined. */
+function mapAttributes(value: Record<string, unknown> | null): ListingAttributes | undefined {
+  if (value == null) return undefined;
+  return value.kind === 'vehicle' || value.kind === 'property' ? (value as unknown as ListingAttributes) : undefined;
+}
 
 function mapListing(row: ListingRowWithImages): Listing {
   const images = (row.listing_images ?? [])
@@ -50,6 +57,7 @@ function mapListing(row: ListingRowWithImages): Listing {
     images,
     sellerId: row.seller_id,
     createdAt: new Date(row.created_at).getTime(),
+    attributes: mapAttributes(row.attributes),
   };
 }
 
@@ -138,6 +146,7 @@ export async function createListing(input: NewListingInput, sellerId: string): P
       category_id: input.categoryId,
       governorate_id: input.governorateId,
       condition: input.condition,
+      attributes: input.attributes ?? {},
       status: 'removed',
     })
     .select('*')
