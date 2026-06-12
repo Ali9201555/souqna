@@ -8,7 +8,7 @@ import { Avatar } from '@/components/avatar';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { AUTH_USES_EMAIL, useAuth } from '@/data/AuthProvider';
+import { useAuth } from '@/data/AuthProvider';
 import { useListings } from '@/data/ListingsProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
@@ -68,17 +68,15 @@ export default function ProfileScreen() {
                 <View style={styles.flex}>
                   <ThemedText style={[styles.name, { textAlign: align }]}>{t('profile_guest')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-                    {t(AUTH_USES_EMAIL ? 'profile_signInHintEmail' : 'profile_signInHint')}
+                    {t('profile_signInHintAccount')}
                   </ThemedText>
                 </View>
               </View>
               <Pressable
                 onPress={() => router.push('/auth')}
                 style={[styles.signIn, { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <Ionicons name={AUTH_USES_EMAIL ? 'mail' : 'call'} size={18} color={theme.onTint} />
-                <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>
-                  {t(AUTH_USES_EMAIL ? 'profile_signInEmail' : 'profile_signIn')}
-                </ThemedText>
+                <Ionicons name="log-in-outline" size={18} color={theme.onTint} />
+                <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('profile_signInCta')}</ThemedText>
               </Pressable>
             </>
           )}
