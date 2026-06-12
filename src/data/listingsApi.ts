@@ -1,6 +1,6 @@
 import type { NewListingInput } from '@/data/ListingsProvider';
 import { supabase } from '@/lib/supabase';
-import type { Listing, ListingAttributes } from '@/types';
+import type { Listing, ListingAttributes, SellerProfile } from '@/types';
 
 /**
  * Supabase data layer for listings. These functions accept/return domain
@@ -185,4 +185,35 @@ export async function createListing(input: NewListingInput, sellerId: string): P
     ...(activated as unknown as ListingRow),
     listing_images: imageRows.map(({ url, sort_order }) => ({ url, sort_order })),
   });
+}
+
+type PublicProfileRow = {
+  id: string;
+  name: string;
+  avatar_color: string;
+  rating_avg: number | string;
+  rating_count: number;
+  is_phone_verified: boolean;
+  created_at: string;
+};
+
+/**
+ * Public seller profiles from the column-safe `profiles_public` view. Phone is
+ * deliberately NOT exposed there (owner-only PII) — remote sellers are
+ * contacted through chat, so `phone` maps to ''.
+ */
+export async function fetchSellerProfiles(ids: string[]): Promise<SellerProfile[]> {
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from('profiles_public').select('*').in('id', ids);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as PublicProfileRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    phone: '',
+    avatarColor: row.avatar_color,
+    joinedYear: new Date(row.created_at).getFullYear(),
+    ratingAvg: Number(row.rating_avg) || 0,
+    ratingCount: row.rating_count,
+    isPhoneVerified: row.is_phone_verified,
+  }));
 }

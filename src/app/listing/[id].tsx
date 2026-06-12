@@ -369,51 +369,55 @@ export default function ListingDetailScreen() {
         onClose={() => setIsReportOpen(false)}
       />
 
-      <Animated.View
-        entering={SlideInDown.springify()
-          .damping(Motion.spring.damping)
-          .stiffness(Motion.spring.stiffness)
-          .mass(Motion.spring.mass)}
-        style={[
-          styles.ctaBar,
-          {
-            bottom: insets.bottom + Spacing.two,
-            backgroundColor: theme.surface,
-            boxShadow: Shadow.dock,
-            flexDirection: rowDir,
-          },
-          scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
-        ]}>
-        <PressableScale
-          scaleTo={0.97}
-          accessibilityRole="button"
-          accessibilityLabel={t('detail_message')}
-          onPress={message}
-          style={[styles.actionBtn, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
-          <Ionicons name="logo-whatsapp" size={20} color={theme.tint} />
-          <ThemedText themeColor="tint" style={styles.actionText}>
-            {t('detail_message')}
-          </ThemedText>
-        </PressableScale>
-        <PressableScale
-          haptic
-          scaleTo={0.97}
-          accessibilityRole="button"
-          accessibilityLabel={t('detail_call')}
-          onPress={call}
-          style={styles.actionPrimary}>
-          <LinearGradient
-            colors={[theme.tint, theme.accent]}
-            start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
-            end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
-            style={[styles.actionPrimaryInner, { flexDirection: rowDir }]}>
-            <Ionicons name="call" size={20} color={theme.onTint} />
-            <ThemedText style={[styles.actionText, { color: theme.onTint }]}>
-              {t('detail_call')}
+      {/* Remote sellers expose no phone (PII stays owner-only) — contact moves
+          to in-app chat (Phase 3), so the bar hides rather than no-op. */}
+      {!!seller?.phone && (
+        <Animated.View
+          entering={SlideInDown.springify()
+            .damping(Motion.spring.damping)
+            .stiffness(Motion.spring.stiffness)
+            .mass(Motion.spring.mass)}
+          style={[
+            styles.ctaBar,
+            {
+              bottom: insets.bottom + Spacing.two,
+              backgroundColor: theme.surface,
+              boxShadow: Shadow.dock,
+              flexDirection: rowDir,
+            },
+            scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+          ]}>
+          <PressableScale
+            scaleTo={0.97}
+            accessibilityRole="button"
+            accessibilityLabel={t('detail_message')}
+            onPress={message}
+            style={[styles.actionBtn, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
+            <Ionicons name="logo-whatsapp" size={20} color={theme.tint} />
+            <ThemedText themeColor="tint" style={styles.actionText}>
+              {t('detail_message')}
             </ThemedText>
-          </LinearGradient>
-        </PressableScale>
-      </Animated.View>
+          </PressableScale>
+          <PressableScale
+            haptic
+            scaleTo={0.97}
+            accessibilityRole="button"
+            accessibilityLabel={t('detail_call')}
+            onPress={call}
+            style={styles.actionPrimary}>
+            <LinearGradient
+              colors={[theme.tint, theme.accent]}
+              start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+              end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+              style={[styles.actionPrimaryInner, { flexDirection: rowDir }]}>
+              <Ionicons name="call" size={20} color={theme.onTint} />
+              <ThemedText style={[styles.actionText, { color: theme.onTint }]}>
+                {t('detail_call')}
+              </ThemedText>
+            </LinearGradient>
+          </PressableScale>
+        </Animated.View>
+      )}
     </ThemedView>
   );
 }

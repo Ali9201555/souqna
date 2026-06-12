@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
@@ -15,7 +16,12 @@ export const AUTH_USES_EMAIL = __DEV__ && process.env.EXPO_PUBLIC_AUTH_DEV_EMAIL
 
 export type AuthErrorCode =
   | 'invalid_phone'
+  | 'invalid_email'
   | 'invalid_code'
+  | 'invalid_credentials'
+  | 'email_in_use'
+  | 'email_not_confirmed'
+  | 'weak_password'
   | 'rate_limited'
   | 'expired'
   | 'network'
@@ -50,10 +56,24 @@ type AuthContextValue = {
   signInWithPhone: (phone: string) => Promise<AuthResult>;
   /** Verify the OTP. On success, onAuthStateChange updates state. Never throws. */
   verifyOtp: (phone: string, code: string) => Promise<AuthResult>;
+  /**
+   * Create an account with email + password. The name rides in user metadata,
+   * so the handle_new_user trigger fills profiles.name server-side. Resolves
+   * `pendingConfirmation` when the project requires email confirmation.
+   */
+  signUpWithPassword: (input: { name: string; email: string; password: string }) => Promise<SignUpResult>;
+  /** Email + password sign-in. Never throws. */
+  signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  /** Send a password-reset email. The link signs the user in for /reset-password. */
+  requestPasswordReset: (email: string) => Promise<AuthResult>;
+  /** Set a new password for the signed-in (or recovery) session. */
+  updatePassword: (password: string) => Promise<AuthResult>;
   /** Set the signed-in user's display name on their profile row. Never throws. */
   setDisplayName: (name: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
+
+export type SignUpResult = AuthResult | { ok: true; pendingConfirmation: true };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -72,7 +92,12 @@ function normalizeIraqiPhone(input: string): string | null {
 function mapError(error: { message?: string; status?: number; code?: string } | null): AuthErrorCode {
   if (!error) return 'unknown';
   const msg = (error.message ?? '').toLowerCase();
-  if (error.status === 429 || msg.includes('rate limit') || (error.code ?? '').includes('rate')) return 'rate_limited';
+  const code = error.code ?? '';
+  if (error.status === 429 || msg.includes('rate limit') || code.includes('rate')) return 'rate_limited';
+  if (code === 'invalid_credentials' || msg.includes('invalid login credentials')) return 'invalid_credentials';
+  if (code === 'email_not_confirmed' || msg.includes('email not confirmed')) return 'email_not_confirmed';
+  if (code === 'weak_password' || msg.includes('password should be')) return 'weak_password';
+  if (code === 'user_already_exists' || msg.includes('already registered')) return 'email_in_use';
   if (msg.includes('expired')) return 'expired';
   if (msg.includes('invalid') && (msg.includes('otp') || msg.includes('token') || msg.includes('code'))) return 'invalid_code';
   if (msg.includes('network') || msg.includes('failed to fetch')) return 'network';
@@ -107,9 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(data.session ? 'authenticated' : 'guest');
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
       setStatus(next ? 'authenticated' : 'guest');
+      // A reset link landed us in a recovery session — collect the new password.
+      // (Navigation only here; supabase.auth.* calls inside this callback deadlock.)
+      if (event === 'PASSWORD_RECOVERY') router.push('/reset-password');
     });
 
     return () => {
@@ -188,6 +216,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { ok: false, code: mapError(error) } : { ok: true };
   }, []);
 
+  const signUpWithPassword = useCallback(
+    async ({ name, email, password }: { name: string; email: string; password: string }): Promise<SignUpResult> => {
+      if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+      const trimmedEmail = email.trim();
+      if (!EMAIL_RE.test(trimmedEmail)) return { ok: false, code: 'invalid_email' };
+      if (password.length < 8) return { ok: false, code: 'weak_password' };
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        // handle_new_user reads raw_user_meta_data->>'name' into profiles.name.
+        options: { data: { name: name.trim() } },
+      });
+      if (error) return { ok: false, code: mapError(error) };
+      // With email confirmation ON, an already-registered email returns an
+      // obfuscated user with no identities instead of an error.
+      if (data.user && (data.user.identities?.length ?? 0) === 0) return { ok: false, code: 'email_in_use' };
+      if (!data.session) return { ok: true, pendingConfirmation: true };
+      return { ok: true };
+    },
+    [],
+  );
+
+  const signInWithPassword = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    return error ? { ok: false, code: mapError(error) } : { ok: true };
+  }, []);
+
+  const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+    const trimmedEmail = email.trim();
+    if (!EMAIL_RE.test(trimmedEmail)) return { ok: false, code: 'invalid_email' };
+    // No redirectTo: the link goes to the Site URL, where detectSessionInUrl
+    // (web) creates a recovery session and PASSWORD_RECOVERY routes the user
+    // to /reset-password.
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+    return error ? { ok: false, code: mapError(error) } : { ok: true };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+    if (password.length < 8) return { ok: false, code: 'weak_password' };
+    const { error } = await supabase.auth.updateUser({ password });
+    return error ? { ok: false, code: mapError(error) } : { ok: true };
+  }, []);
+
   const setDisplayName = useCallback(
     async (name: string): Promise<AuthResult> => {
       if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
@@ -218,10 +292,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: status === 'authenticated',
       signInWithPhone,
       verifyOtp,
+      signUpWithPassword,
+      signInWithPassword,
+      requestPasswordReset,
+      updatePassword,
       setDisplayName,
       signOut,
     }),
-    [session, profile, status, signInWithPhone, verifyOtp, setDisplayName, signOut],
+    [session, profile, status, signInWithPhone, verifyOtp, signUpWithPassword, signInWithPassword, requestPasswordReset, updatePassword, setDisplayName, signOut],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

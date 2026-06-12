@@ -12,7 +12,7 @@ import { Screen } from '@/components/screen';
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Shadow, Spacing } from '@/constants/theme';
-import { AUTH_USES_EMAIL, useAuth } from '@/data/AuthProvider';
+import { useAuth } from '@/data/AuthProvider';
 import { useListings } from '@/data/ListingsProvider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
                 <View style={styles.flex}>
                   <ThemedText style={[styles.name, { textAlign: align }]}>{t('profile_guest')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-                    {t(AUTH_USES_EMAIL ? 'profile_signInHintEmail' : 'profile_signInHint')}
+                    {t('profile_signInHintAccount')}
                   </ThemedText>
                 </View>
               </View>
@@ -102,7 +102,7 @@ export default function ProfileScreen() {
                 haptic
                 scaleTo={0.97}
                 accessibilityRole="button"
-                accessibilityLabel={t(AUTH_USES_EMAIL ? 'profile_signInEmail' : 'profile_signIn')}
+                accessibilityLabel={t('profile_signInCta')}
                 onPress={() => router.push('/auth')}
                 style={styles.gradientWrap}>
                 <LinearGradient
@@ -110,10 +110,8 @@ export default function ProfileScreen() {
                   start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
                   end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
                   style={[styles.pillBtn, { flexDirection: rowDir }]}>
-                  <Ionicons name={AUTH_USES_EMAIL ? 'mail' : 'call'} size={18} color={theme.onTint} />
-                  <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>
-                    {t(AUTH_USES_EMAIL ? 'profile_signInEmail' : 'profile_signIn')}
-                  </ThemedText>
+                  <Ionicons name="log-in-outline" size={18} color={theme.onTint} />
+                  <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('profile_signInCta')}</ThemedText>
                 </LinearGradient>
               </PressableScale>
             </>
