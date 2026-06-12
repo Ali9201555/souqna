@@ -29,6 +29,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'سيارة بحالة ممتازة، ماشية 78 ألف كم، فحص كامل، صبغ وكالة. السعر قابل للتفاوض البسيط.',
     priceIqd: 18_500_000, negotiable: true, categoryId: 'vehicles', governorateId: 'baghdad',
     condition: 'used', images: img('corolla', 3), sellerId: 's1', createdAt: mins(35),
+    attributes: { kind: 'vehicle', make: 'toyota', model: 'كورولا XLI', year: 2019, mileageKm: 78_000, transmission: 'automatic', fuel: 'gasoline' },
   },
   {
     id: 'l2',
@@ -43,6 +44,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'شقة مفروشة بالكامل، طابق ثاني، قريبة من الخدمات والمولات. الإيجار شهري.',
     priceIqd: 750_000, negotiable: true, categoryId: 'realestate', governorateId: 'basra',
     condition: 'used', images: img('apartment', 3), sellerId: 's2', createdAt: hrs(7),
+    attributes: { kind: 'property', dealType: 'rent', propertyType: 'apartment', bedrooms: 3, bathrooms: 2, areaM2: 140, furnished: true },
   },
   {
     id: 'l4',
@@ -106,6 +108,39 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'قطعة أرض في موقع مميز قرب الشارع العام، سند طابو صرف. تصلح للبناء فوراً.',
     priceIqd: 45_000_000, negotiable: true, categoryId: 'realestate', governorateId: 'anbar',
     condition: 'used', images: img('land', 2), sellerId: 's1', createdAt: days(6),
+    attributes: { kind: 'property', dealType: 'sale', propertyType: 'land', areaM2: 200 },
+  },
+  {
+    id: 'l13',
+    title: 'دار للبيع 150م في زيونة - ركن',
+    description: 'دار طابقين، 4 غرف نوم، 3 صحيات، مطبخ حديث. قريبة من شارع الربيعي. طابو صرف.',
+    priceIqd: 650_000_000, negotiable: true, categoryId: 'realestate', governorateId: 'baghdad',
+    condition: 'used', images: img('house', 4), sellerId: 's3', createdAt: hrs(2),
+    attributes: { kind: 'property', dealType: 'sale', propertyType: 'house', bedrooms: 4, bathrooms: 3, areaM2: 150, furnished: false },
+  },
+  {
+    id: 'l14',
+    title: 'كيا سبورتاج 2021 فول مواصفات',
+    description: 'ماشية 42 ألف، بصمة وفتحة سقف وشاشة كبيرة. فحص أمامي كامل، بدون حوادث.',
+    priceIqd: 32_000_000, negotiable: true, categoryId: 'vehicles', governorateId: 'erbil',
+    condition: 'used', images: img('sportage', 3), sellerId: 's4', createdAt: hrs(5),
+    attributes: { kind: 'vehicle', make: 'kia', model: 'سبورتاج', year: 2021, mileageKm: 42_000, transmission: 'automatic', fuel: 'gasoline' },
+  },
+  {
+    id: 'l15',
+    title: 'شقة للبيع 120م في عنكاوا مجمع مسوّر',
+    description: 'شقة طابق خامس مع مصعد وكراج، إطلالة جميلة، مجمع فيه حراسة وخدمات كاملة.',
+    priceIqd: 180_000_000, negotiable: false, categoryId: 'realestate', governorateId: 'erbil',
+    condition: 'new', images: img('ankawa', 3), sellerId: 's2', createdAt: days(1),
+    attributes: { kind: 'property', dealType: 'sale', propertyType: 'apartment', bedrooms: 2, bathrooms: 2, areaM2: 120, furnished: false },
+  },
+  {
+    id: 'l16',
+    title: 'نيسان صني 2017 اقتصادية',
+    description: 'سيارة عائلية اقتصادية جداً بالبنزين، جير عادي، ماشية 120 ألف. سعر مناسب.',
+    priceIqd: 11_000_000, negotiable: true, categoryId: 'vehicles', governorateId: 'basra',
+    condition: 'used', images: img('sunny', 2), sellerId: 's1', createdAt: days(2),
+    attributes: { kind: 'vehicle', make: 'nissan', model: 'صني', year: 2017, mileageKm: 120_000, transmission: 'manual', fuel: 'gasoline' },
   },
 ];
 
