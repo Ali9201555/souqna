@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -23,26 +23,23 @@ const ERR_KEY: Record<AuthErrorCode, TKey> = {
   unknown: 'auth_err_unknown',
 };
 
+type Mode = 'signin' | 'signup';
+
 export default function AuthScreen() {
   const router = useRouter();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
-  const { signInWithPhone, verifyOtp, isAuthenticated } = useAuth();
+  const { signInWithPhone, verifyOtp, setDisplayName } = useAuth();
   const align = isRTL ? 'right' : 'left';
 
+  const [mode, setMode] = useState<Mode>('signin');
   const [step, setStep] = useState<'identify' | 'otp'>('identify');
+  const [name, setName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
   const [pending, setPending] = useState(false);
   const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
   const [resendIn, setResendIn] = useState(0);
-
-  // Close as soon as a session exists, however it arrived — code entry here,
-  // a magic-link click in another tab (web), or a restored session. The verify
-  // handler deliberately does NOT call router.back() itself.
-  useEffect(() => {
-    if (isAuthenticated) router.back();
-  }, [isAuthenticated, router]);
 
   // One interval for the whole otp step (not re-armed per tick); ticking at 0
   // is a same-value setState, which React bails out of.
@@ -72,9 +69,17 @@ export default function AuthScreen() {
     setPending(true);
     setErrorCode(null);
     const res = await verifyOtp(identifier, code);
-    setPending(false);
-    // Success closes via the isAuthenticated effect (single close path).
-    if (!res.ok) setErrorCode(res.code);
+    if (res.ok) {
+      // OTP signup and sign-in are the same flow server-side; "create account"
+      // just adds the display name. Failure here is non-fatal — the name can be
+      // edited from the profile later.
+      if (mode === 'signup' && name.trim()) await setDisplayName(name);
+      setPending(false);
+      router.back();
+    } else {
+      setPending(false);
+      setErrorCode(res.code);
+    }
   };
 
   const editIdentifier = () => {
@@ -93,9 +98,42 @@ export default function AuthScreen() {
     </Pressable>
   );
 
+  const sendDisabled = !identifier.trim() || (mode === 'signup' && !name.trim());
+
   return (
     <Screen title={t('auth_title')} headerRight={closeBtn}>
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <View style={styles.brand}>
+          <ThemedText style={[styles.brandName, { color: theme.tint }]}>{t('appName')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.brandTag}>
+            {t('auth_welcome')}
+          </ThemedText>
+        </View>
+
+        {step === 'identify' && (
+          <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            {(['signin', 'signup'] as Mode[]).map((m) => {
+              const active = mode === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    setMode(m);
+                    setErrorCode(null);
+                  }}
+                  style={[
+                    styles.segmentItem,
+                    { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
+                  ]}>
+                  <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
+                    {t(m === 'signin' ? 'auth_signin_tab' : 'auth_signup_tab')}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         {errorCode != null && (
           <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
             {t(ERR_KEY[errorCode])}
@@ -104,6 +142,21 @@ export default function AuthScreen() {
 
         {step === 'identify' ? (
           <>
+            {mode === 'signup' && (
+              <>
+                <ThemedText type="smallBold" style={{ textAlign: align }}>
+                  {t('auth_nameLabel')}
+                </ThemedText>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder={t('auth_ph_name')}
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, inputBase, { textAlign: align }]}
+                />
+              </>
+            )}
+
             <ThemedText type="smallBold" style={{ textAlign: align }}>
               {AUTH_USES_EMAIL ? t('auth_emailLabel') : t('auth_phoneLabel')}
             </ThemedText>
@@ -135,14 +188,18 @@ export default function AuthScreen() {
               </View>
             )}
 
-            <PrimaryButton label={t('auth_sendCode')} onPress={send} pending={pending} disabled={!identifier.trim()} />
+            <PrimaryButton
+              label={t(mode === 'signup' ? 'auth_signup_tab' : 'auth_sendCode')}
+              onPress={send}
+              pending={pending}
+              disabled={sendDisabled}
+            />
           </>
         ) : (
           <>
             <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
               {t('auth_otpSentTo', { target })}
             </ThemedText>
-
             {AUTH_USES_EMAIL && (
               <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
                 {t('auth_linkHint')}
@@ -179,7 +236,7 @@ export default function AuthScreen() {
             </View>
           </>
         )}
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -216,7 +273,18 @@ function PrimaryButton({
 }
 
 const styles = StyleSheet.create({
-  body: { padding: Spacing.three, gap: Spacing.three },
+  body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
+  brand: { alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.four },
+  brandName: { fontSize: 34, fontWeight: '800', lineHeight: 40 },
+  brandTag: { textAlign: 'center' },
+  segment: { gap: Spacing.two },
+  segmentItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.md,
