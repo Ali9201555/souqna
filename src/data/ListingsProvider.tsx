@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useAuth } from '@/data/AuthProvider';
 import { DEMO_USER_ID, SELLERS, SEED_LISTINGS, SEED_THREADS } from '@/data/seed';
-import { createListing as apiCreateListing, fetchActiveListings } from '@/data/listingsApi';
+import { createListing as apiCreateListing, fetchActiveListings, fetchSellerProfiles } from '@/data/listingsApi';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { checkReportRateLimit } from '@/lib/trust/moderation';
 import { submitReportToSupabase } from '@/services/reports';
@@ -240,7 +240,40 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     [listings],
   );
 
-  const getSeller = useCallback((id: string) => SELLERS.find((s) => s.id === id), []);
+  // Sellers of remote listings, resolved from the public (phone-less)
+  // profiles_public view. attemptedSellers stops refetch loops for ids the
+  // view doesn't return (e.g. deleted accounts).
+  const [remoteSellers, setRemoteSellers] = useState<Record<string, SellerProfile>>({});
+  const attemptedSellers = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const missing = [...new Set(remoteListings.map((l) => l.sellerId))].filter(
+      (id) => !attemptedSellers.current.has(id) && !SELLERS.some((s) => s.id === id),
+    );
+    if (!missing.length) return;
+    missing.forEach((id) => attemptedSellers.current.add(id));
+    let cancelled = false;
+    fetchSellerProfiles(missing)
+      .then((sellers) => {
+        if (cancelled || !sellers.length) return;
+        setRemoteSellers((prev) => {
+          const next = { ...prev };
+          for (const seller of sellers) next[seller.id] = seller;
+          return next;
+        });
+      })
+      // Allow a retry on the next listings change — transient network failure.
+      .catch(() => missing.forEach((id) => attemptedSellers.current.delete(id)));
+    return () => {
+      cancelled = true;
+    };
+  }, [remoteListings]);
+
+  const getSeller = useCallback(
+    (id: string) => SELLERS.find((s) => s.id === id) ?? remoteSellers[id],
+    [remoteSellers],
+  );
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) =>

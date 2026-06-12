@@ -279,18 +279,22 @@ export default function ListingDetailScreen() {
         onClose={() => setIsReportOpen(false)}
       />
 
-      <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.background }}>
-        <View style={[styles.actionBar, { borderTopColor: theme.border, flexDirection: rowDir }]}>
-          <Pressable onPress={message} style={[styles.actionBtn, styles.actionGhost, { borderColor: theme.tint }]}>
-            <Ionicons name="logo-whatsapp" size={20} color={theme.tint} />
-            <ThemedText style={{ color: theme.tint, fontWeight: '700' }}>{t('detail_message')}</ThemedText>
-          </Pressable>
-          <Pressable onPress={call} style={[styles.actionBtn, { backgroundColor: theme.tint }]}>
-            <Ionicons name="call" size={20} color={theme.onTint} />
-            <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('detail_call')}</ThemedText>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      {/* Remote sellers expose no phone (PII stays owner-only) — contact moves
+          to in-app chat (Phase 3), so the bar hides rather than no-op. */}
+      {!!seller?.phone && (
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: theme.background }}>
+          <View style={[styles.actionBar, { borderTopColor: theme.border, flexDirection: rowDir }]}>
+            <Pressable onPress={message} style={[styles.actionBtn, styles.actionGhost, { borderColor: theme.tint }]}>
+              <Ionicons name="logo-whatsapp" size={20} color={theme.tint} />
+              <ThemedText style={{ color: theme.tint, fontWeight: '700' }}>{t('detail_message')}</ThemedText>
+            </Pressable>
+            <Pressable onPress={call} style={[styles.actionBtn, { backgroundColor: theme.tint }]}>
+              <Ionicons name="call" size={20} color={theme.onTint} />
+              <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('detail_call')}</ThemedText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      )}
     </ThemedView>
   );
 }
