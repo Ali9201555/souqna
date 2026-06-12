@@ -1,21 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ScrollView, StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AttributeFields } from '@/components/attribute-fields';
 import { AuthGate } from '@/components/auth-gate';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PhotoPicker } from '@/components/photo-picker';
+import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { BottomTabInset, Radius, Shadow, Spacing } from '@/constants/theme';
 import { CATEGORIES, getCategory } from '@/data/categories';
 import { GOVERNORATES, getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
+import { hapticImpact } from '@/lib/haptics';
 import {
   checkPostRateLimit,
   parsePostTimestamps,
@@ -26,6 +31,11 @@ import {
 import { toAsciiDigits } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
 import type { ListingAttributes, ListingCondition } from '@/types';
+
+/** Focused inputs get a tint ring; unfocused sit borderless on the element fill. */
+const INPUT_BORDER_WIDTH = 1.5;
+/** Cap the section entrance stagger so the form never feels sluggish (precedent: listing-card). */
+const MAX_STAGGER_INDEX = 8;
 
 /** Empty attribute shell for categories that collect structured facts. */
 function attributeShell(categoryId: string | null): ListingAttributes | undefined {
@@ -140,101 +150,139 @@ export default function SellScreen() {
 
   const categoryOptions: PickerOption[] = CATEGORIES.map((c) => ({ id: c.id, label: c.name[lang] }));
   const govOptions: PickerOption[] = GOVERNORATES.map((g) => ({ id: g.id, label: g.name[lang] }));
-  const inputStyle: StyleProp<TextStyle> = [styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border, textAlign: align }];
+  const gradientStart = isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 };
+  const gradientEnd = isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 };
 
   return (
     <Screen title={t('sell_title')}>
       <AuthGate title={t('gate_sell_title')} message={t('gate_sell_message')}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {postedId && (
-          <View style={[styles.successCard, { backgroundColor: theme.tint }]}>
-            <Ionicons name="checkmark-circle" size={22} color={theme.onTint} />
-            <ThemedText style={[styles.successText, { color: theme.onTint }]}>{t('sell_success')}</ThemedText>
-            <Pressable
-              onPress={() => router.push({ pathname: '/listing/[id]', params: { id: postedId } })}
-              style={[styles.successBtn, { backgroundColor: theme.onTint }]}>
-              <ThemedText style={{ color: theme.tint, fontWeight: '700' }}>{t('detail_details')}</ThemedText>
-            </Pressable>
-          </View>
+          <Animated.View entering={FadeInDown.duration(360)} style={[styles.successCard, { boxShadow: Shadow.card }]}>
+            <LinearGradient
+              colors={[theme.tint, theme.accent]}
+              start={gradientStart}
+              end={gradientEnd}
+              style={[styles.successInner, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="checkmark-circle" size={22} color={theme.onTint} />
+              <ThemedText style={[styles.successText, { color: theme.onTint, textAlign: align }]}>
+                {t('sell_success')}
+              </ThemedText>
+              <PressableScale
+                haptic
+                scaleTo={0.92}
+                accessibilityRole="button"
+                accessibilityLabel={t('detail_details')}
+                onPress={() => router.push({ pathname: '/listing/[id]', params: { id: postedId } })}
+                style={[styles.successBtn, { backgroundColor: theme.onTint }]}>
+                <ThemedText type="small" style={{ color: theme.tint, fontWeight: '700' }}>
+                  {t('detail_details')}
+                </ThemedText>
+              </PressableScale>
+            </LinearGradient>
+          </Animated.View>
         )}
 
-        <Field label={t('sell_photos')} align={align}>
+        <SectionCard title={t('sell_photos')} align={align} index={0}>
           <PhotoPicker images={images} onChange={setImages} />
-        </Field>
+        </SectionCard>
 
-        <Field label={t('sell_field_title')} align={align}>
-          <TextInput value={title} onChangeText={setTitle} placeholder={t('sell_ph_title')} placeholderTextColor={theme.textSecondary} style={inputStyle} />
-        </Field>
+        <SectionCard align={align} index={1}>
+          <Field label={t('sell_field_title')} align={align}>
+            <FormInput value={title} onChangeText={setTitle} placeholder={t('sell_ph_title')} style={{ textAlign: align }} />
+          </Field>
+          <Field label={t('sell_field_desc')} align={align}>
+            <FormInput
+              value={desc}
+              onChangeText={setDesc}
+              placeholder={t('sell_ph_desc')}
+              multiline
+              style={[styles.multiline, { textAlign: align }]}
+            />
+          </Field>
+        </SectionCard>
 
-        <Field label={t('sell_field_desc')} align={align}>
-          <TextInput
-            value={desc}
-            onChangeText={setDesc}
-            placeholder={t('sell_ph_desc')}
-            placeholderTextColor={theme.textSecondary}
-            multiline
-            style={[inputStyle, styles.multiline]}
+        <SectionCard title={t('sell_field_price')} align={align} index={2}>
+          <FormInput
+            value={price}
+            onChangeText={setPrice}
+            placeholder={t('sell_ph_price')}
+            keyboardType="number-pad"
+            style={{ textAlign: align }}
           />
-        </Field>
-
-        <Field label={t('sell_field_price')} align={align}>
-          <TextInput value={price} onChangeText={setPrice} placeholder={t('sell_ph_price')} placeholderTextColor={theme.textSecondary} keyboardType="number-pad" style={inputStyle} />
           <View style={[styles.switchRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <ThemedText type="small">{t('sell_negotiable')}</ThemedText>
             <Switch value={negotiable} onValueChange={setNegotiable} trackColor={{ true: theme.tint, false: theme.border }} />
           </View>
-        </Field>
+        </SectionCard>
 
-        <Field label={t('sell_field_category')} align={align}>
-          <SelectRow label={categoryId ? getCategory(categoryId)?.name[lang] ?? t('sell_choose') : t('sell_choose')} onPress={() => setPicker('category')} />
-        </Field>
+        <SectionCard align={align} index={3}>
+          <Field label={t('sell_field_category')} align={align}>
+            <SelectRow label={categoryId ? getCategory(categoryId)?.name[lang] ?? t('sell_choose') : t('sell_choose')} onPress={() => setPicker('category')} />
+          </Field>
+          <Field label={t('sell_field_governorate')} align={align}>
+            <SelectRow label={governorateId ? getGovernorate(governorateId)?.name[lang] ?? t('sell_choose') : t('sell_choose')} onPress={() => setPicker('governorate')} />
+          </Field>
+          <Field label={t('sell_field_condition')} align={align}>
+            <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              {(['used', 'new'] as ListingCondition[]).map((c) => {
+                const active = condition === c;
+                return (
+                  <PressableScale
+                    key={c}
+                    haptic
+                    scaleTo={0.95}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    onPress={() => setCondition(c)}
+                    style={[styles.segmentItem, { backgroundColor: active ? theme.tint : theme.backgroundElement }]}>
+                    <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
+                      {c === 'new' ? t('cond_new') : t('cond_used')}
+                    </ThemedText>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </Field>
+        </SectionCard>
 
-        <Field label={t('sell_field_governorate')} align={align}>
-          <SelectRow label={governorateId ? getGovernorate(governorateId)?.name[lang] ?? t('sell_choose') : t('sell_choose')} onPress={() => setPicker('governorate')} />
-        </Field>
-
-        <Field label={t('sell_field_condition')} align={align}>
-          <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            {(['used', 'new'] as ListingCondition[]).map((c) => {
-              const active = condition === c;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => setCondition(c)}
-                  style={[
-                    styles.segmentItem,
-                    { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
-                  ]}>
-                  <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
-                    {c === 'new' ? t('cond_new') : t('cond_used')}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Field>
-
-        <AttributeFields value={attributes} onChange={setAttributes} />
+        {attributes && (
+          <SectionCard title={categoryId ? getCategory(categoryId)?.name[lang] : undefined} align={align} index={4}>
+            <AttributeFields value={attributes} onChange={setAttributes} />
+          </SectionCard>
+        )}
 
         {errorKey && (
-          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-            {t(errorKey)}
-          </ThemedText>
+          <Animated.View entering={FadeInDown.duration(240)}>
+            <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+              {t(errorKey)}
+            </ThemedText>
+          </Animated.View>
         )}
         {submitError && (
-          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-            {t('sell_error')}
-          </ThemedText>
+          <Animated.View entering={FadeInDown.duration(240)}>
+            <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+              {t('sell_error')}
+            </ThemedText>
+          </Animated.View>
         )}
 
-        <Pressable
-          onPress={() => void publish()}
+        <PressableScale
+          scaleTo={0.97}
+          accessibilityRole="button"
+          accessibilityLabel={posting ? t('sell_posting') : t('sell_publish')}
+          onPress={() => {
+            hapticImpact();
+            void publish();
+          }}
           disabled={posting}
-          style={[styles.publish, { backgroundColor: theme.tint, opacity: posting ? 0.6 : 1 }]}>
-          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>
-            {posting ? t('sell_posting') : t('sell_publish')}
-          </ThemedText>
-        </Pressable>
+          style={[styles.publish, { boxShadow: Shadow.fab, opacity: posting ? 0.6 : 1 }]}>
+          <LinearGradient colors={[theme.tint, theme.accent]} start={gradientStart} end={gradientEnd} style={styles.publishInner}>
+            <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>
+              {posting ? t('sell_posting') : t('sell_publish')}
+            </ThemedText>
+          </LinearGradient>
+        </PressableScale>
       </ScrollView>
 
       <PickerSheet
@@ -256,7 +304,37 @@ export default function SellScreen() {
   );
 }
 
-function Field({ label, align, children }: { label: string; align: 'left' | 'right'; children: React.ReactNode }) {
+/** Floating white card grouping one form section, with a staggered entrance. */
+function SectionCard({
+  title,
+  align,
+  index,
+  children,
+}: {
+  title?: string;
+  align: 'left' | 'right';
+  index: number;
+  children: ReactNode;
+}) {
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(360).delay(Math.min(index, MAX_STAGGER_INDEX) * 55)}
+      style={[
+        styles.card,
+        { backgroundColor: theme.surface, boxShadow: Shadow.card },
+        scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+      ]}>
+      {title != null && (
+        <ThemedText style={[styles.cardTitle, { textAlign: align }]}>{title}</ThemedText>
+      )}
+      {children}
+    </Animated.View>
+  );
+}
+
+function Field({ label, align, children }: { label: string; align: 'left' | 'right'; children: ReactNode }) {
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold" style={{ textAlign: align }}>
@@ -267,39 +345,76 @@ function Field({ label, align, children }: { label: string; align: 'left' | 'rig
   );
 }
 
+/** Text input on the element fill; focus swaps the transparent ring for tint. */
+function FormInput({ style, onFocus, onBlur, ...rest }: TextInputProps) {
+  const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      {...rest}
+      placeholderTextColor={theme.textSecondary}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[
+        styles.input,
+        {
+          color: theme.text,
+          backgroundColor: theme.backgroundElement,
+          borderColor: focused ? theme.tint : 'transparent',
+        },
+        style,
+      ]}
+    />
+  );
+}
+
 function SelectRow({ label, onPress }: { label: string; onPress: () => void }) {
   const theme = useTheme();
   const { isRTL } = useI18n();
   return (
-    <Pressable
+    <PressableScale
+      scaleTo={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={[
         styles.select,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.border, flexDirection: isRTL ? 'row-reverse' : 'row' },
+        { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' },
       ]}>
       <ThemedText>{label}</ThemedText>
       <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={theme.textSecondary} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
+  content: { padding: Spacing.three, gap: Spacing.three, paddingBottom: BottomTabInset + Spacing.three },
+  card: {
+    borderRadius: Radius.xl,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  cardTitle: { fontSize: 16, fontWeight: '800' },
   field: { gap: Spacing.one },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderWidth: INPUT_BORDER_WIDTH,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 15,
   },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
-  switchRow: { alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.one },
+  switchRow: { alignItems: 'center', justifyContent: 'space-between' },
   select: {
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
@@ -308,22 +423,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.pill,
   },
   publish: {
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     marginTop: Spacing.two,
   },
-  successCard: {
-    flexDirection: 'row',
+  publishInner: {
+    alignItems: 'center',
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.pill,
+  },
+  successCard: { borderRadius: Radius.xl },
+  successInner: {
     alignItems: 'center',
     gap: Spacing.two,
     padding: Spacing.three,
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
   },
   successText: { flex: 1, fontWeight: '700' },
-  successBtn: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: Radius.sm },
+  successBtn: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: Radius.pill },
 });

@@ -1,14 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState, type ComponentProps } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { ListState } from '@/components/list-state';
 import { ListingCard } from '@/components/listing-card';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
+import { PressableScale } from '@/components/pressable-scale';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
+import { Motion, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useListings } from '@/data/ListingsProvider';
 import {
   matchesPropertyFilters,
@@ -17,8 +29,9 @@ import {
   type PropertyFilters,
   type VehicleFilters,
 } from '@/data/section-filters';
-import { hasSection, SECTION_TITLE } from '@/data/sections';
+import { hasSection } from '@/data/sections';
 import { VEHICLE_MAKES } from '@/data/vehicle-makes';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { DEAL_TYPE_SHORT, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
@@ -71,22 +84,82 @@ function sortListings(items: Listing[], mode: SortMode): Listing[] {
 function FilterChip({ icon, label, active, onPress }: { icon: IoniconName; label: string; active?: boolean; onPress: () => void }) {
   const theme = useTheme();
   const { isRTL } = useI18n();
+  const pop = useSharedValue(1);
+
+  useEffect(() => {
+    if (active) {
+      pop.value = withSequence(withSpring(1.1, Motion.springBouncy), withSpring(1, Motion.spring));
+    }
+  }, [active, pop]);
+
+  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+
   return (
-    <Pressable
-      onPress={onPress}
+    <Animated.View
+      entering={FadeIn.duration(220)}
+      exiting={FadeOut.duration(180)}
+      layout={LinearTransition.springify().damping(18).stiffness(240).mass(0.7)}
+      style={popStyle}>
+      <PressableScale
+        scaleTo={0.92}
+        haptic
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: Boolean(active) }}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: active ? theme.tintSoft : theme.backgroundElement,
+            borderColor: active ? theme.tint : theme.border,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+          },
+        ]}>
+        <Ionicons name={icon} size={14} color={active ? theme.tint : theme.text} />
+        <ThemedText type="small" numberOfLines={1} style={[styles.chipLabel, active && { color: theme.tint, fontWeight: '700' }]}>
+          {label}
+        </ThemedText>
+      </PressableScale>
+    </Animated.View>
+  );
+}
+
+function SkeletonCard({ index }: { index: number }) {
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  const { isRTL } = useI18n();
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(360).delay(Math.min(index, 8) * 55)}
       style={[
-        styles.chip,
-        {
-          backgroundColor: active ? theme.tintSoft : theme.backgroundElement,
-          borderColor: active ? theme.tint : theme.border,
-          flexDirection: isRTL ? 'row-reverse' : 'row',
-        },
+        styles.skeletonCard,
+        { backgroundColor: theme.surface, boxShadow: Shadow.card },
+        scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
       ]}>
-      <Ionicons name={icon} size={14} color={active ? theme.tint : theme.text} />
-      <ThemedText type="small" numberOfLines={1} style={[styles.chipLabel, active && { color: theme.tint, fontWeight: '700' }]}>
-        {label}
-      </ThemedText>
-    </Pressable>
+      <View style={styles.skeletonImage}>
+        <Skeleton width="100%" height="100%" radius={0} delay={index * 90} />
+      </View>
+      <View style={[styles.skeletonBody, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+        <Skeleton width="55%" height={16} delay={index * 90 + 60} />
+        <Skeleton width="90%" height={12} delay={index * 90 + 120} />
+        <Skeleton width="45%" height={10} delay={index * 90 + 180} />
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Placeholder grid mirroring the two-column results layout while listings load. */
+function SkeletonGrid() {
+  const { isRTL } = useI18n();
+  return (
+    <View style={styles.skeletonGrid}>
+      {[0, 1, 2].map((row) => (
+        <View key={row} style={[styles.skeletonRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <SkeletonCard index={row * 2} />
+          <SkeletonCard index={row * 2 + 1} />
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -135,7 +208,7 @@ function SectionList({
       {error ? (
         <ListState variant="error" title={t('state_errorTitle')} hint={t('state_errorHint')} actionLabel={t('state_retry')} onAction={refetch} />
       ) : isLoading && results.length === 0 ? (
-        <ListState variant="loading" title={t('state_loading')} />
+        <SkeletonGrid />
       ) : results.length === 0 ? (
         <ListState variant="empty" icon={emptyIcon} title={t('search_noResults')} hint={t('section_emptyHint')} />
       ) : (
@@ -206,15 +279,17 @@ function VehiclesSection() {
         <FilterChip icon="pricetag-outline" active={priceIdx != null} label={priceIdx != null ? priceBracketLabel(CAR_PRICE_BRACKETS[priceIdx], t) : t('filter_price')} onPress={() => setPicker('price')} />
         <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={sortLabels[sort]} onPress={() => setPicker('sort')} />
       </View>
-      <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: isRTL ? 'right' : 'left', paddingHorizontal: Spacing.three }}>
-        {t('search_results', { count: results.length })}
-      </ThemedText>
+      <Animated.View key={results.length} entering={FadeInDown.duration(300)}>
+        <ThemedText type="small" themeColor="textSecondary" style={[styles.count, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('search_results', { count: results.length })}
+        </ThemedText>
+      </Animated.View>
     </View>
   );
 
   return (
     <>
-      <Stack.Screen options={{ title: t('section_cars_title'), headerTitleStyle: { fontSize: 18 } }} />
+      <Stack.Screen options={{ title: t('section_cars_title'), headerTitleStyle: { fontSize: 18, fontWeight: '800' } }} />
       <SectionList results={results} isLoading={isLoading} error={error} refetch={refetch} emptyIcon="car-sport-outline" header={header} />
 
       <PickerSheet visible={picker === 'make'} title={t('attr_vehicle_make')} options={makeOptions} selectedId={filters.make ?? null} onSelect={(id) => setFilters((f) => ({ ...f, make: id ?? undefined }))} onClose={() => setPicker(null)} />
@@ -286,12 +361,24 @@ function RealEstateSection() {
         {dealSegments.map((s) => {
           const active = filters.dealType === s.value;
           return (
-            <Pressable
+            <PressableScale
               key={s.label}
+              haptic
+              scaleTo={0.96}
+              accessibilityRole="button"
+              accessibilityLabel={s.label}
+              accessibilityState={{ selected: active }}
               onPress={() => setDealType(s.value)}
-              style={[styles.segmentItem, { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement }]}>
+              style={[
+                styles.segmentItem,
+                {
+                  borderColor: active ? theme.tint : theme.border,
+                  backgroundColor: active ? theme.tint : theme.backgroundElement,
+                },
+                active && { boxShadow: Shadow.card },
+              ]}>
               <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>{s.label}</ThemedText>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>
@@ -304,15 +391,17 @@ function RealEstateSection() {
         )}
         <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={sortLabels[sort]} onPress={() => setPicker('sort')} />
       </View>
-      <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: isRTL ? 'right' : 'left', paddingHorizontal: Spacing.three }}>
-        {t('search_results', { count: results.length })}
-      </ThemedText>
+      <Animated.View key={results.length} entering={FadeInDown.duration(300)}>
+        <ThemedText type="small" themeColor="textSecondary" style={[styles.count, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('search_results', { count: results.length })}
+        </ThemedText>
+      </Animated.View>
     </View>
   );
 
   return (
     <>
-      <Stack.Screen options={{ title: t('section_realestate_title'), headerTitleStyle: { fontSize: 18 } }} />
+      <Stack.Screen options={{ title: t('section_realestate_title'), headerTitleStyle: { fontSize: 18, fontWeight: '800' } }} />
       <SectionList results={results} isLoading={isLoading} error={error} refetch={refetch} emptyIcon="home-outline" header={header} />
 
       <PickerSheet visible={picker === 'type'} title={t('attr_property_type')} options={typeOptions} selectedId={filters.propertyType ?? null} onSelect={(id) => setFilters((f) => ({ ...f, propertyType: (id as PropertyType | null) ?? undefined }))} onClose={() => setPicker(null)} />
@@ -332,7 +421,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: Spacing.two,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
   },
   chipRow: { flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three },
@@ -345,6 +434,12 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   chipLabel: { flexShrink: 1 },
+  count: { paddingHorizontal: Spacing.three },
   column: { gap: Spacing.three, paddingHorizontal: Spacing.three },
   grid: { gap: Spacing.three, paddingBottom: Spacing.five },
+  skeletonGrid: { gap: Spacing.three, paddingHorizontal: Spacing.three },
+  skeletonRow: { gap: Spacing.three },
+  skeletonCard: { flex: 1, borderRadius: Radius.xl, overflow: 'hidden' },
+  skeletonImage: { width: '100%', aspectRatio: 4 / 3 },
+  skeletonBody: { padding: Spacing.two + Spacing.one, gap: Spacing.one },
 });

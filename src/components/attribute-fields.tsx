@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
+import { StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
 
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
+import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { VEHICLE_MAKES, getVehicleMake } from '@/data/vehicle-makes';
@@ -20,6 +21,9 @@ import type {
   Transmission,
   VehicleAttributes,
 } from '@/types';
+
+/** Focused inputs get a tint ring; unfocused sit borderless on the element fill (matches the Sell form). */
+const INPUT_BORDER_WIDTH = 1.5;
 
 /**
  * Category-specific structured inputs for the Sell form. Renders nothing for
@@ -40,14 +44,9 @@ export function AttributeFields({
 
 function VehicleFields({ value, onChange }: { value: VehicleAttributes; onChange: (next: VehicleAttributes) => void }) {
   const { t, lang, isRTL } = useI18n();
-  const theme = useTheme();
   const [showMake, setShowMake] = useState(false);
   const [showFuel, setShowFuel] = useState(false);
   const align = isRTL ? 'right' : 'left';
-  const inputStyle: StyleProp<TextStyle> = [
-    styles.input,
-    { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border, textAlign: align },
-  ];
 
   const makeOptions: PickerOption[] = VEHICLE_MAKES.map((m) => ({ id: m.id, label: m.name[lang] }));
   const fuelOptions: PickerOption[] = (Object.keys(FUEL_LABEL) as FuelType[]).map((f) => ({ id: f, label: t(FUEL_LABEL[f]) }));
@@ -62,38 +61,35 @@ function VehicleFields({ value, onChange }: { value: VehicleAttributes; onChange
       </Labeled>
 
       <Labeled label={t('attr_vehicle_model')} align={align}>
-        <TextInput
+        <FocusInput
           value={value.model ?? ''}
           onChangeText={(v) => onChange({ ...value, model: v || undefined })}
           placeholder={t('attr_ph_model')}
-          placeholderTextColor={theme.textSecondary}
-          style={inputStyle}
+          style={{ textAlign: align }}
         />
       </Labeled>
 
       <View style={[styles.pairRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <View style={styles.pairItem}>
           <Labeled label={t('attr_vehicle_year')} align={align}>
-            <TextInput
+            <FocusInput
               value={value.year != null ? String(value.year) : ''}
               onChangeText={(v) => onChange({ ...value, year: parseIntField(v) })}
               placeholder={t('attr_ph_year')}
-              placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={4}
-              style={[inputStyle, styles.ltrDigits]}
+              style={styles.ltrDigits}
             />
           </Labeled>
         </View>
         <View style={styles.pairItem}>
           <Labeled label={t('attr_vehicle_mileage')} align={align}>
-            <TextInput
+            <FocusInput
               value={value.mileageKm != null ? String(value.mileageKm) : ''}
               onChangeText={(v) => onChange({ ...value, mileageKm: parseIntField(v) })}
               placeholder={t('attr_ph_mileage')}
-              placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
-              style={[inputStyle, styles.ltrDigits]}
+              style={styles.ltrDigits}
             />
           </Labeled>
         </View>
@@ -137,10 +133,6 @@ function PropertyFields({ value, onChange }: { value: PropertyAttributes; onChan
   const theme = useTheme();
   const [showType, setShowType] = useState(false);
   const align = isRTL ? 'right' : 'left';
-  const inputStyle: StyleProp<TextStyle> = [
-    styles.input,
-    { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border, textAlign: align },
-  ];
 
   const typeOptions: PickerOption[] = (Object.keys(PROPERTY_TYPE_LABEL) as PropertyType[]).map((p) => ({
     id: p,
@@ -168,38 +160,35 @@ function PropertyFields({ value, onChange }: { value: PropertyAttributes; onChan
       <View style={[styles.pairRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <View style={styles.pairItem}>
           <Labeled label={t('attr_bedrooms')} align={align}>
-            <TextInput
+            <FocusInput
               value={value.bedrooms != null ? String(value.bedrooms) : ''}
               onChangeText={(v) => onChange({ ...value, bedrooms: parseIntField(v) })}
-              placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={2}
-              style={[inputStyle, styles.ltrDigits]}
+              style={styles.ltrDigits}
             />
           </Labeled>
         </View>
         <View style={styles.pairItem}>
           <Labeled label={t('attr_bathrooms')} align={align}>
-            <TextInput
+            <FocusInput
               value={value.bathrooms != null ? String(value.bathrooms) : ''}
               onChangeText={(v) => onChange({ ...value, bathrooms: parseIntField(v) })}
-              placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={2}
-              style={[inputStyle, styles.ltrDigits]}
+              style={styles.ltrDigits}
             />
           </Labeled>
         </View>
       </View>
 
       <Labeled label={t('attr_area')} align={align}>
-        <TextInput
+        <FocusInput
           value={value.areaM2 != null ? String(value.areaM2) : ''}
           onChangeText={(v) => onChange({ ...value, areaM2: parseIntField(v) })}
           placeholder={t('attr_ph_area')}
-          placeholderTextColor={theme.textSecondary}
           keyboardType="number-pad"
-          style={[inputStyle, styles.ltrDigits]}
+          style={styles.ltrDigits}
         />
       </Labeled>
 
@@ -235,19 +224,51 @@ function Labeled({ label, align, children }: { label: string; align: 'left' | 'r
   );
 }
 
+/** Text input on the element fill; focus swaps the transparent ring for tint (matches the Sell form). */
+function FocusInput({ style, onFocus, onBlur, ...rest }: TextInputProps) {
+  const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      {...rest}
+      placeholderTextColor={theme.textSecondary}
+      onFocus={(e) => {
+        setFocused(true);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        onBlur?.(e);
+      }}
+      style={[
+        styles.input,
+        {
+          color: theme.text,
+          backgroundColor: theme.backgroundElement,
+          borderColor: focused ? theme.tint : 'transparent',
+        },
+        style,
+      ]}
+    />
+  );
+}
+
 function SelectRow({ label, onPress }: { label: string; onPress: () => void }) {
   const theme = useTheme();
   const { isRTL } = useI18n();
   return (
-    <Pressable
+    <PressableScale
+      scaleTo={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={[
         styles.select,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.border, flexDirection: isRTL ? 'row-reverse' : 'row' },
+        { backgroundColor: theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' },
       ]}>
       <ThemedText>{label}</ThemedText>
       <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={theme.textSecondary} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -269,17 +290,19 @@ function Segmented<T extends string>({
       {options.map((option) => {
         const active = selected === option;
         return (
-          <Pressable
+          <PressableScale
             key={option}
+            haptic
+            scaleTo={0.95}
+            accessibilityRole="button"
+            accessibilityLabel={t(labels[option])}
+            accessibilityState={{ selected: active }}
             onPress={() => onSelect(option)}
-            style={[
-              styles.segmentItem,
-              { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
-            ]}>
+            style={[styles.segmentItem, { backgroundColor: active ? theme.tint : theme.backgroundElement }]}>
             <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
               {t(labels[option])}
             </ThemedText>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
@@ -289,8 +312,8 @@ function Segmented<T extends string>({
 const styles = StyleSheet.create({
   field: { gap: Spacing.one },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderWidth: INPUT_BORDER_WIDTH,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 15,
@@ -302,8 +325,7 @@ const styles = StyleSheet.create({
   select: {
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
@@ -312,8 +334,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.pill,
   },
   switchRow: { alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.one },
 });
