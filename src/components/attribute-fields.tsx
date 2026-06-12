@@ -8,6 +8,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { VEHICLE_MAKES, getVehicleMake } from '@/data/vehicle-makes';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
+import { DEAL_TYPE_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
 import { parseIntField } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
 import type {
@@ -19,32 +20,6 @@ import type {
   Transmission,
   VehicleAttributes,
 } from '@/types';
-
-export const FUEL_LABEL: Record<FuelType, TKey> = {
-  gasoline: 'attr_fuel_gasoline',
-  diesel: 'attr_fuel_diesel',
-  hybrid: 'attr_fuel_hybrid',
-  electric: 'attr_fuel_electric',
-  lpg: 'attr_fuel_lpg',
-};
-
-export const PROPERTY_TYPE_LABEL: Record<PropertyType, TKey> = {
-  house: 'attr_prop_house',
-  apartment: 'attr_prop_apartment',
-  land: 'attr_prop_land',
-  commercial: 'attr_prop_commercial',
-  farm: 'attr_prop_farm',
-};
-
-export const TRANSMISSION_LABEL: Record<Transmission, TKey> = {
-  automatic: 'attr_trans_automatic',
-  manual: 'attr_trans_manual',
-};
-
-export const DEAL_TYPE_LABEL: Record<DealType, TKey> = {
-  sale: 'attr_deal_sale',
-  rent: 'attr_deal_rent',
-};
 
 /**
  * Category-specific structured inputs for the Sell form. Renders nothing for
