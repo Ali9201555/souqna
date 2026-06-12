@@ -7,6 +7,7 @@ export const CATEGORIES: Category[] = [
   { id: 'electronics', icon: 'laptop', name: { ar: 'إلكترونيات', ku: 'ئەلیکترۆنیات', en: 'Electronics' } },
   { id: 'furniture', icon: 'bed', name: { ar: 'أثاث', ku: 'کەلوپەل', en: 'Furniture' } },
   { id: 'appliances', icon: 'tv', name: { ar: 'أجهزة منزلية', ku: 'ئامێری ماڵەوە', en: 'Home appliances' } },
+  { id: 'food', icon: 'restaurant', name: { ar: 'أكل بيتي', ku: 'خواردنی ماڵەوە', en: 'Home-cooked food' } },
   { id: 'fashion', icon: 'shirt', name: { ar: 'أزياء', ku: 'جلوبەرگ', en: 'Fashion' } },
   { id: 'power', icon: 'flash', name: { ar: 'مولدات وطاقة', ku: 'مۆڵید و وزە', en: 'Generators & power' } },
   { id: 'services', icon: 'construct', name: { ar: 'خدمات', ku: 'خزمەتگوزاری', en: 'Services' } },

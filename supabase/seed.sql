@@ -9,11 +9,12 @@ insert into categories (id, icon, name_ar, name_ku, name_en, sort_order) values
   ('electronics', 'laptop',          'إلكترونيات',    'ئەلیکترۆنیات',   'Electronics',        4),
   ('furniture',   'bed',             'أثاث',          'کەلوپەل',        'Furniture',          5),
   ('appliances',  'tv',              'أجهزة منزلية',  'ئامێری ماڵەوە',  'Home appliances',    6),
-  ('fashion',     'shirt',           'أزياء',         'جلوبەرگ',        'Fashion',            7),
-  ('power',       'flash',           'مولدات وطاقة',  'مۆڵید و وزە',    'Generators & power', 8),
-  ('services',    'construct',       'خدمات',         'خزمەتگوزاری',    'Services',           9),
-  ('jobs',        'briefcase',       'وظائف',         'کار',            'Jobs',               10),
-  ('other',       'pricetags',       'أخرى',          'هیتر',           'Other',              11)
+  ('food',        'restaurant',      'أكل بيتي',      'خواردنی ماڵەوە', 'Home-cooked food',    7),
+  ('fashion',     'shirt',           'أزياء',         'جلوبەرگ',        'Fashion',            8),
+  ('power',       'flash',           'مولدات وطاقة',  'مۆڵید و وزە',    'Generators & power', 9),
+  ('services',    'construct',       'خدمات',         'خزمەتگوزاری',    'Services',           10),
+  ('jobs',        'briefcase',       'وظائف',         'کار',            'Jobs',               11),
+  ('other',       'pricetags',       'أخرى',          'هیتر',           'Other',              12)
 on conflict (id) do update set
   icon = excluded.icon,
   name_ar = excluded.name_ar,
