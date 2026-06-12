@@ -7,6 +7,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { CATEGORIES } from '@/data/categories';
+import { hasSection } from '@/data/sections';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 
@@ -30,7 +31,11 @@ export function CategoryStrip() {
           key={c.id}
           haptic
           scaleTo={0.9}
-          onPress={() => router.push({ pathname: '/search', params: { category: c.id } })}
+          onPress={() =>
+            hasSection(c.id)
+              ? router.push({ pathname: '/section/[category]', params: { category: c.id } })
+              : router.push({ pathname: '/search', params: { category: c.id } })
+          }
           style={styles.item}>
           <View style={[styles.circle, { backgroundColor: theme.tintSoft }]}>
             <Ionicons name={c.icon as IoniconName} size={24} color={theme.tint} />

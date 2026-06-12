@@ -206,6 +206,20 @@ const en = {
   attr_area: 'Area (m²)',
   attr_ph_area: 'e.g. 150',
   attr_furnished: 'Furnished',
+  attr_deal_sale_short: 'For sale',
+  attr_deal_rent_short: 'For rent',
+
+  section_cars_title: 'Cars',
+  section_realestate_title: 'Real estate',
+  section_emptyHint: 'Try removing some filters.',
+  filter_price: 'Price',
+  filter_upTo: 'Up to {amount}',
+  filter_maxKm: 'Up to {count} km',
+  unit_km: 'km',
+  unit_m2: 'm²',
+  fact_beds: '{count} BR',
+  common_yes: 'Yes',
+  common_no: 'No',
 } satisfies Record<string, string>;
 
 export type TKey = keyof typeof en;
@@ -411,6 +425,20 @@ const ar: Partial<Record<TKey, string>> = {
   attr_area: 'المساحة (م²)',
   attr_ph_area: 'مثال: 150',
   attr_furnished: 'مفروشة',
+  attr_deal_sale_short: 'للبيع',
+  attr_deal_rent_short: 'للإيجار',
+
+  section_cars_title: 'سيارات',
+  section_realestate_title: 'عقارات',
+  section_emptyHint: 'جرّب إزالة بعض الفلاتر.',
+  filter_price: 'السعر',
+  filter_upTo: 'حتى {amount}',
+  filter_maxKm: 'حتى {count} كم',
+  unit_km: 'كم',
+  unit_m2: 'م²',
+  fact_beds: '{count} غرف',
+  common_yes: 'نعم',
+  common_no: 'لا',
 };
 
 // Kurdish (Sorani) — best-effort, pending native review. Falls back to English.
@@ -575,6 +603,20 @@ const ku: Partial<Record<TKey, string>> = {
   attr_area: 'ڕووبەر (م²)',
   attr_ph_area: 'نموونە: 150',
   attr_furnished: 'مفروش',
+  attr_deal_sale_short: 'بۆ فرۆشتن',
+  attr_deal_rent_short: 'بۆ کرێ',
+
+  section_cars_title: 'ئۆتۆمبێل',
+  section_realestate_title: 'خانووبەرە',
+  section_emptyHint: 'هەوڵبدە هەندێک فلتەر لاببەیت.',
+  filter_price: 'نرخ',
+  filter_upTo: 'تا {amount}',
+  filter_maxKm: 'تا {count} کم',
+  unit_km: 'کم',
+  unit_m2: 'م²',
+  fact_beds: '{count} ژوور',
+  common_yes: 'بەڵێ',
+  common_no: 'نەخێر',
 };
 
 export const translations: Record<Language, Partial<Record<TKey, string>>> = {

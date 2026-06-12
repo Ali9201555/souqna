@@ -23,9 +23,11 @@ import { Radius, Spacing } from '@/constants/theme';
 import { getCategory } from '@/data/categories';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
+import { getVehicleMake } from '@/data/vehicle-makes';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
-import { formatPrice, formatRelativeTime } from '@/lib/format';
+import { DEAL_TYPE_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
+import { formatPrice, formatRelativeTime, groupThousands } from '@/lib/format';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -195,6 +197,48 @@ export default function ListingDetailScreen() {
               label={t('detail_condition')}
               value={listing.condition === 'new' ? t('cond_new') : t('cond_used')}
             />
+            {listing.attributes?.kind === 'vehicle' && (
+              <>
+                {listing.attributes.make != null && (
+                  <DetailRow icon="car-sport-outline" label={t('attr_vehicle_make')} value={getVehicleMake(listing.attributes.make)?.name[lang] ?? listing.attributes.make} />
+                )}
+                {listing.attributes.model != null && (
+                  <DetailRow icon="ribbon-outline" label={t('attr_vehicle_model')} value={listing.attributes.model} />
+                )}
+                {listing.attributes.year != null && (
+                  <DetailRow icon="calendar-outline" label={t('attr_vehicle_year')} value={String(listing.attributes.year)} />
+                )}
+                {listing.attributes.mileageKm != null && (
+                  <DetailRow icon="speedometer-outline" label={t('attr_vehicle_mileage')} value={`${groupThousands(listing.attributes.mileageKm)} ${t('unit_km')}`} />
+                )}
+                {listing.attributes.transmission != null && (
+                  <DetailRow icon="cog-outline" label={t('attr_vehicle_transmission')} value={t(TRANSMISSION_LABEL[listing.attributes.transmission])} />
+                )}
+                {listing.attributes.fuel != null && (
+                  <DetailRow icon="flash-outline" label={t('attr_vehicle_fuel')} value={t(FUEL_LABEL[listing.attributes.fuel])} />
+                )}
+              </>
+            )}
+            {listing.attributes?.kind === 'property' && (
+              <>
+                <DetailRow icon="swap-horizontal-outline" label={t('attr_deal_type')} value={t(DEAL_TYPE_LABEL[listing.attributes.dealType])} />
+                {listing.attributes.propertyType != null && (
+                  <DetailRow icon="business-outline" label={t('attr_property_type')} value={t(PROPERTY_TYPE_LABEL[listing.attributes.propertyType])} />
+                )}
+                {listing.attributes.bedrooms != null && (
+                  <DetailRow icon="bed-outline" label={t('attr_bedrooms')} value={String(listing.attributes.bedrooms)} />
+                )}
+                {listing.attributes.bathrooms != null && (
+                  <DetailRow icon="water-outline" label={t('attr_bathrooms')} value={String(listing.attributes.bathrooms)} />
+                )}
+                {listing.attributes.areaM2 != null && (
+                  <DetailRow icon="resize-outline" label={t('attr_area')} value={`${groupThousands(listing.attributes.areaM2)} ${t('unit_m2')}`} />
+                )}
+                {listing.attributes.furnished != null && (
+                  <DetailRow icon="cube-outline" label={t('attr_furnished')} value={listing.attributes.furnished ? t('common_yes') : t('common_no')} />
+                )}
+              </>
+            )}
           </Section>
 
           <View

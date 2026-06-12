@@ -19,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { formatPrice, formatRelativeTime } from '@/lib/format';
+import { listingFacts } from '@/lib/listing-facts';
 import type { Listing } from '@/types';
 
 /** Neutral blurhash so images fade in from a soft wash instead of a flat box. */
@@ -109,6 +110,14 @@ export function ListingCard({ listing, index }: { listing: Listing; index?: numb
         <ThemedText numberOfLines={2} style={[styles.cardTitle, { textAlign: align }]}>
           {listing.title}
         </ThemedText>
+        {(() => {
+          const facts = listingFacts(listing, t);
+          return facts.length > 0 ? (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={[styles.factLine, { textAlign: align }]}>
+              {facts.join(' · ')}
+            </ThemedText>
+          ) : null;
+        })()}
         <View style={[styles.metaRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <Ionicons name="location-outline" size={13} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.metaText}>
@@ -156,6 +165,7 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.two + Spacing.one, gap: 2 },
   price: { fontSize: 17, fontWeight: '800' },
   cardTitle: { fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  factLine: { fontSize: 12, marginTop: 1 },
   metaRow: { alignItems: 'center', gap: 4, marginTop: 2 },
   metaText: { fontSize: 12, flexShrink: 1 },
 });
