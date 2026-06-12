@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -15,12 +19,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IMAGE_PLACEHOLDER } from '@/components/listing-card';
+import { PressableScale } from '@/components/pressable-scale';
 import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { formatPrice } from '@/lib/format';
@@ -32,6 +39,7 @@ export default function DiscoverScreen() {
   const { listings, toggleFavorite, isFavorite } = useListings();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
+  const scheme = useColorScheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -97,14 +105,25 @@ export default function DiscoverScreen() {
     opacity: interpolate(translateX.value, [-width * SWIPE_RATIO, -width * 0.05], [1, 0], Extrapolation.CLAMP),
   }));
 
+  // No dangerSoft token — one-off wash for the skip chip (rgba overlays excepted).
+  const dangerWash = scheme === 'dark' ? 'rgba(251, 113, 133, 0.16)' : 'rgba(225, 29, 72, 0.09)';
+
   return (
     <ThemedView style={styles.flex}>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView edges={['top', 'bottom']} style={styles.flex}>
-        <View style={[styles.topBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { backgroundColor: theme.backgroundElement }]}>
+        <Animated.View
+          entering={FadeInDown.duration(320)}
+          style={[styles.topBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <PressableScale
+            scaleTo={0.9}
+            onPress={() => router.back()}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t('common_close')}
+            style={[styles.iconBtn, { backgroundColor: theme.backgroundElement }]}>
             <Ionicons name="chevron-down" size={22} color={theme.text} />
-          </Pressable>
+          </PressableScale>
           <View style={styles.titleWrap}>
             <ThemedText style={styles.topTitle}>{t('discover_title')}</ThemedText>
             {current && (
@@ -114,11 +133,11 @@ export default function DiscoverScreen() {
             )}
           </View>
           <View style={styles.iconBtn} />
-        </View>
+        </Animated.View>
 
         {current ? (
           <>
-            <View style={styles.deck}>
+            <Animated.View entering={FadeIn.duration(360).delay(60)} style={styles.deck}>
               {next && (
                 <View style={[styles.cardWrap, styles.peek]} pointerEvents="none">
                   <CardFace listing={next} dimmed />
@@ -137,55 +156,87 @@ export default function DiscoverScreen() {
                   </Animated.View>
                 </Animated.View>
               </GestureDetector>
-            </View>
+            </Animated.View>
 
-            <View style={styles.actions}>
-              <Pressable
+            <Animated.View
+              entering={FadeInUp.duration(360).delay(120)}
+              style={[styles.actions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <PressableScale
+                haptic
+                scaleTo={0.9}
                 onPress={() => fling('skip')}
                 accessibilityRole="button"
                 accessibilityLabel={t('discover_skip')}
-                style={({ pressed }) => [styles.action, styles.actionGhost, { borderColor: theme.border }, pressed && styles.pressed]}>
-                <Ionicons name="close" size={30} color={theme.textSecondary} />
-              </Pressable>
-              <Pressable
+                style={[styles.action, { backgroundColor: dangerWash }]}>
+                <Ionicons name="close" size={30} color={theme.danger} />
+              </PressableScale>
+              <PressableScale
+                scaleTo={0.9}
                 onPress={() => router.push({ pathname: '/listing/[id]', params: { id: current.id } })}
                 accessibilityRole="button"
                 accessibilityLabel={t('detail_details')}
-                style={({ pressed }) => [styles.actionSmall, { borderColor: theme.border }, pressed && styles.pressed]}>
-                <Ionicons name="information" size={20} color={theme.text} />
-              </Pressable>
-              <Pressable
+                style={[styles.actionSmall, { backgroundColor: theme.tintSoft }]}>
+                <Ionicons name="information" size={20} color={theme.tint} />
+              </PressableScale>
+              <PressableScale
+                haptic
+                scaleTo={0.9}
                 onPress={() => fling('save')}
                 accessibilityRole="button"
                 accessibilityLabel={t('discover_save')}
-                style={({ pressed }) => [styles.action, { backgroundColor: theme.tint }, pressed && styles.pressed]}>
+                style={[styles.action, { boxShadow: Shadow.fab }]}>
+                <LinearGradient
+                  colors={[theme.tint, theme.accent]}
+                  start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+                  end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+                  style={[StyleSheet.absoluteFill, styles.actionFill]}
+                />
                 <Ionicons name="heart" size={30} color={theme.onTint} />
-              </Pressable>
-            </View>
+              </PressableScale>
+            </Animated.View>
 
-            <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              {t('discover_hint')}
-            </ThemedText>
+            <Animated.View entering={FadeIn.duration(400).delay(200)}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+                {t('discover_hint')}
+              </ThemedText>
+            </Animated.View>
           </>
         ) : (
-          <View style={styles.empty}>
-            <View style={[styles.emptyBadge, { backgroundColor: theme.backgroundElement }]}>
+          <Animated.View entering={FadeInDown.duration(360)} style={styles.empty}>
+            <View style={[styles.emptyBadge, { backgroundColor: theme.tintSoft }]}>
               <Ionicons name="checkmark-done" size={44} color={theme.tint} />
             </View>
             <ThemedText style={styles.emptyTitle}>{t('discover_empty')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyHint}>
               {t('discover_emptyHint')}
             </ThemedText>
-            <Pressable
+            <PressableScale
+              haptic
+              scaleTo={0.97}
               onPress={() => router.push('/saved')}
-              style={({ pressed }) => [styles.emptyBtn, { backgroundColor: theme.tint }, pressed && styles.pressed]}>
-              <Ionicons name="heart" size={18} color={theme.onTint} />
-              <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('discover_seeSaved')}</ThemedText>
-            </Pressable>
-            <Pressable onPress={() => router.back()} style={styles.emptyLink}>
-              <ThemedText type="small" themeColor="tint">{t('common_close')}</ThemedText>
-            </Pressable>
-          </View>
+              accessibilityRole="button"
+              accessibilityLabel={t('discover_seeSaved')}
+              style={[styles.emptyBtn, { boxShadow: Shadow.fab }]}>
+              <LinearGradient
+                colors={[theme.tint, theme.accent]}
+                start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+                end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+                style={[styles.emptyBtnInner, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Ionicons name="heart" size={18} color={theme.onTint} />
+                <ThemedText style={{ color: theme.onTint, fontWeight: '800' }}>{t('discover_seeSaved')}</ThemedText>
+              </LinearGradient>
+            </PressableScale>
+            <PressableScale
+              scaleTo={0.9}
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel={t('common_close')}
+              style={styles.emptyLink}>
+              <ThemedText type="small" themeColor="tint" style={styles.emptyLinkText}>
+                {t('common_close')}
+              </ThemedText>
+            </PressableScale>
+          </Animated.View>
         )}
       </SafeAreaView>
     </ThemedView>
@@ -194,6 +245,7 @@ export default function DiscoverScreen() {
 
 function CardFace({ listing, dimmed }: { listing: Listing; dimmed?: boolean }) {
   const theme = useTheme();
+  const scheme = useColorScheme();
   const { t, lang, isRTL } = useI18n();
   const { getSeller } = useListings();
   const seller = getSeller(listing.sellerId);
@@ -203,8 +255,19 @@ function CardFace({ listing, dimmed }: { listing: Listing; dimmed?: boolean }) {
   const rowDir = isRTL ? 'row-reverse' : 'row';
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <Image source={{ uri: listing.images[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={dimmed ? 0 : 150} />
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.backgroundElement, boxShadow: dimmed ? Shadow.card : Shadow.float },
+        scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+      ]}>
+      <Image
+        source={{ uri: listing.images[0] }}
+        placeholder={IMAGE_PLACEHOLDER}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        transition={dimmed ? 0 : 150}
+      />
 
       <View style={[styles.topChips, { flexDirection: rowDir }]}>
         <View style={styles.chip}>
@@ -245,7 +308,7 @@ const styles = StyleSheet.create({
   deck: { flex: 1, margin: Spacing.three, alignItems: 'center', justifyContent: 'center' },
   cardWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   peek: { transform: [{ scale: 0.94 }, { translateY: 18 }] },
-  card: { flex: 1, borderRadius: Radius.xl, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', justifyContent: 'space-between' },
+  card: { flex: 1, borderRadius: Radius.xxl, overflow: 'hidden', justifyContent: 'space-between' },
   topChips: { gap: Spacing.two, padding: Spacing.three },
   chip: { backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: Spacing.two, paddingVertical: 4, borderRadius: Radius.pill },
   chipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
@@ -264,22 +327,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderWidth: 3,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
   stampSave: { left: Spacing.four, transform: [{ rotate: '-14deg' }] },
   stampSkip: { right: Spacing.four, transform: [{ rotate: '14deg' }] },
   stampText: { fontSize: 22, fontWeight: '900' },
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.four, paddingVertical: Spacing.two },
+  actions: { alignItems: 'center', justifyContent: 'center', gap: Spacing.four, paddingVertical: Spacing.two },
   action: { width: 64, height: 64, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
-  actionGhost: { borderWidth: 2 },
-  actionSmall: { width: 48, height: 48, borderRadius: Radius.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.7 },
+  actionFill: { borderRadius: Radius.pill },
+  actionSmall: { width: 48, height: 48, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   hint: { textAlign: 'center', paddingBottom: Spacing.three, paddingHorizontal: Spacing.four },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.five },
   emptyBadge: { width: 96, height: 96, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
   emptyHint: { textAlign: 'center' },
-  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, borderRadius: Radius.md, marginTop: Spacing.two },
+  emptyBtn: { borderRadius: Radius.pill, marginTop: Spacing.two },
+  emptyBtnInner: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.pill,
+  },
   emptyLink: { padding: Spacing.two },
+  emptyLinkText: { fontWeight: '700' },
 });

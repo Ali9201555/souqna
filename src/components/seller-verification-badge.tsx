@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Motion, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 
@@ -24,25 +25,28 @@ export function SellerVerificationBadge({
 
   const solid = variant === 'solid';
   const compact = size === 'small';
-  const color = solid ? theme.onTint : theme.success;
+  const color = solid ? theme.onTint : theme.tint;
 
   return (
-    <View
+    <Animated.View
+      entering={ZoomIn.springify()
+        .damping(Motion.springBouncy.damping)
+        .stiffness(Motion.springBouncy.stiffness)
+        .mass(Motion.springBouncy.mass)}
       accessibilityLabel={t('detail_verified')}
       style={[
         styles.badge,
         compact && styles.small,
         {
           flexDirection: isRTL ? 'row-reverse' : 'row',
-          backgroundColor: solid ? theme.tint : theme.background,
-          borderColor: solid ? theme.tint : theme.border,
+          backgroundColor: solid ? theme.tint : theme.tintSoft,
         },
       ]}>
       <Ionicons name="shield-checkmark" size={compact ? 12 : 14} color={color} />
       <ThemedText style={[compact ? styles.smallText : styles.text, { color }]}>
         {t('detail_verified')}
       </ThemedText>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -51,7 +55,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: Spacing.one,
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,

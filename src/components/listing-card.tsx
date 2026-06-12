@@ -95,10 +95,10 @@ export function ListingCard({ listing, index }: { listing: Listing; index?: numb
             style={[
               styles.badge,
               isRTL ? styles.badgeRTL : styles.badgeLTR,
-              { flexDirection: isRTL ? 'row-reverse' : 'row' },
+              { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' },
             ]}>
-            <Ionicons name="shield-checkmark" size={11} color="#FFFFFF" />
-            <ThemedText style={styles.badgeText}>{t('detail_verified')}</ThemedText>
+            <Ionicons name="shield-checkmark" size={11} color={theme.onTint} />
+            <ThemedText style={[styles.badgeText, { color: theme.onTint }]}>{t('detail_verified')}</ThemedText>
           </View>
         )}
       </View>
@@ -132,7 +132,7 @@ export function ListingCard({ listing, index }: { listing: Listing; index?: numb
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
   },
   image: { width: '100%', aspectRatio: 4 / 3, backgroundColor: 'rgba(0,0,0,0.06)' },
@@ -157,11 +157,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: Radius.pill,
-    backgroundColor: 'rgba(13, 18, 16, 0.55)',
   },
   badgeLTR: { left: Spacing.two },
   badgeRTL: { right: Spacing.two },
-  badgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  badgeText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
   body: { padding: Spacing.two + Spacing.one, gap: 2 },
   price: { fontSize: 17, fontWeight: '800' },
   cardTitle: { fontSize: 14, lineHeight: 19, fontWeight: '600' },

@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
+import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 
@@ -15,7 +17,7 @@ const REMOVE_SIZE = 24;
 const REMOVE_OFFSET = -6;
 const CAMERA_ICON_SIZE = 24;
 const REMOVE_ICON_SIZE = 14;
-const ADD_TILE_BORDER_WIDTH = 1;
+const ADD_TILE_BORDER_WIDTH = 1.5;
 const DISABLED_OPACITY = 0.5;
 const PICKER_QUALITY = 0.8;
 
@@ -67,37 +69,53 @@ export function PhotoPicker({ images, onChange, max = DEFAULT_MAX_PHOTOS }: Phot
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[styles.photoRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <Pressable
+        <PressableScale
+          haptic
+          scaleTo={0.92}
           disabled={!canAdd}
+          accessibilityRole="button"
+          accessibilityLabel={t('sell_addPhoto')}
+          accessibilityState={{ disabled: !canAdd }}
           onPress={pickImages}
-          style={[styles.addPhoto, { borderColor: theme.border }, !canAdd && styles.disabled]}>
+          style={[
+            styles.addPhoto,
+            { borderColor: theme.tint, backgroundColor: theme.tintSoft },
+            !canAdd && styles.disabled,
+          ]}>
           <Ionicons name="camera" size={CAMERA_ICON_SIZE} color={theme.tint} />
-          <ThemedText type="small" themeColor="tint">
+          <ThemedText type="small" themeColor="tint" style={styles.addLabel}>
             {t('sell_addPhoto')}
           </ThemedText>
-        </Pressable>
+        </PressableScale>
         {images.map((uri, i) => (
-          <View key={`${uri}-${i}`} style={styles.thumbWrap}>
+          <Animated.View key={`${uri}-${i}`} entering={ZoomIn.duration(260)} style={styles.thumbWrap}>
             <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
-            <Pressable
+            <PressableScale
+              haptic
+              scaleTo={0.85}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t('common_close')}
               onPress={() => removeImage(i)}
               style={[
                 styles.thumbRemove,
                 isRTL ? styles.thumbRemoveRtl : styles.thumbRemoveLtr,
                 { backgroundColor: theme.danger },
               ]}>
-              <Ionicons name="close" size={REMOVE_ICON_SIZE} color={Colors.light.onTint} />
-            </Pressable>
-          </View>
+              <Ionicons name="close" size={REMOVE_ICON_SIZE} color={theme.onTint} />
+            </PressableScale>
+          </Animated.View>
         ))}
       </ScrollView>
       <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
         {t('sell_photoLimit', { count: max })}
       </ThemedText>
       {permissionDenied && (
-        <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-          {t('sell_photoPermission')}
-        </ThemedText>
+        <Animated.View entering={FadeInDown.duration(240)}>
+          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+            {t('sell_photoPermission')}
+          </ThemedText>
+        </Animated.View>
       )}
     </View>
   );
@@ -109,16 +127,17 @@ const styles = StyleSheet.create({
   addPhoto: {
     width: THUMB_SIZE,
     height: THUMB_SIZE,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: ADD_TILE_BORDER_WIDTH,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
   },
+  addLabel: { fontWeight: '700' },
   disabled: { opacity: DISABLED_OPACITY },
   thumbWrap: { width: THUMB_SIZE, height: THUMB_SIZE },
-  thumb: { width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: Radius.md },
+  thumb: { width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: Radius.lg },
   thumbRemove: {
     position: 'absolute',
     top: REMOVE_OFFSET,
@@ -127,6 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: '0 1px 4px rgba(16, 24, 40, 0.24)',
   },
   thumbRemoveLtr: { right: REMOVE_OFFSET },
   thumbRemoveRtl: { left: REMOVE_OFFSET },

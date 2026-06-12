@@ -1,8 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 
 export function Avatar({ name, color, size = 44 }: { name: string; color: string; size?: number }) {
+  const theme = useTheme();
   const initials = name
     .trim()
     .split(/\s+/)
@@ -12,11 +14,13 @@ export function Avatar({ name, color, size = 44 }: { name: string; color: string
 
   return (
     <View
+      accessibilityRole="image"
+      accessibilityLabel={name}
       style={[
         styles.avatar,
         { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
       ]}>
-      <ThemedText style={{ color: '#fff', fontSize: size * 0.38, fontWeight: '700' }}>
+      <ThemedText style={{ color: theme.onTint, fontSize: size * 0.38, fontWeight: '700' }}>
         {initials}
       </ThemedText>
     </View>

@@ -1,11 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/data/AuthProvider';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -20,7 +24,8 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 export function AuthGate({ title, message, children }: { title: string; message: string; children: ReactNode }) {
   const { status } = useAuth();
   const theme = useTheme();
-  const { t } = useI18n();
+  const scheme = useColorScheme();
+  const { t, isRTL } = useI18n();
   const router = useRouter();
 
   // Demo mode (no backend configured) has no auth to gate behind — posting is
@@ -39,18 +44,36 @@ export function AuthGate({ title, message, children }: { title: string; message:
 
   return (
     <View style={styles.center}>
-      <View style={[styles.card, { borderColor: theme.border }]}>
-        <Ionicons name="lock-closed-outline" size={44} color={theme.tint} />
+      <Animated.View
+        entering={FadeInDown.duration(360)}
+        style={[
+          styles.card,
+          { backgroundColor: theme.surface, boxShadow: Shadow.card },
+          scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+        ]}>
+        <View style={[styles.iconCircle, { backgroundColor: theme.tintSoft }]}>
+          <Ionicons name="lock-closed-outline" size={32} color={theme.tint} />
+        </View>
         <ThemedText style={styles.title}>{title}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.message}>
           {message}
         </ThemedText>
-        <Pressable
+        <PressableScale
+          haptic
+          scaleTo={0.97}
+          accessibilityRole="button"
+          accessibilityLabel={t('gate_cta')}
           onPress={() => router.push('/auth')}
-          style={({ pressed }) => [styles.cta, { backgroundColor: theme.tint }, pressed && styles.pressed]}>
-          <ThemedText style={{ color: theme.onTint, fontWeight: '700' }}>{t('gate_cta')}</ThemedText>
-        </Pressable>
-      </View>
+          style={[styles.cta, { boxShadow: Shadow.fab }]}>
+          <LinearGradient
+            colors={[theme.tint, theme.accent]}
+            start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+            end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+            style={styles.ctaInner}>
+            <ThemedText style={{ color: theme.onTint, fontWeight: '800' }}>{t('gate_cta')}</ThemedText>
+          </LinearGradient>
+        </PressableScale>
+      </Animated.View>
     </View>
   );
 }
@@ -61,18 +84,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     padding: Spacing.five,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderStyle: 'dashed',
+    borderRadius: Radius.xl,
+    width: '100%',
     maxWidth: 360,
   },
-  title: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
+  title: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
   message: { textAlign: 'center' },
-  cta: {
-    marginTop: Spacing.two,
+  cta: { marginTop: Spacing.two, borderRadius: Radius.pill },
+  ctaInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.five,
     paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
+    borderRadius: Radius.pill,
   },
-  pressed: { opacity: 0.85 },
 });

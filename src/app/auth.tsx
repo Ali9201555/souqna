@@ -1,12 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { PressableScale } from '@/components/pressable-scale';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAuth, type AuthErrorCode } from '@/data/AuthProvider';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import type { TKey } from '@/i18n/translations';
@@ -29,12 +33,17 @@ const ERR_KEY: Record<AuthErrorCode, TKey> = {
 type Mode = 'signin' | 'signup';
 type Step = 'form' | 'forgot' | 'resetSent' | 'confirmSent';
 
+/** Focus ring is full-strength border; reserve the width so layout is stable. */
+const INPUT_BORDER_WIDTH = 1.5;
+
 export default function AuthScreen() {
   const router = useRouter();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
+  const scheme = useColorScheme();
   const { signUpWithPassword, signInWithPassword, requestPasswordReset } = useAuth();
   const align = isRTL ? 'right' : 'left';
+  const rowDir = isRTL ? 'row-reverse' : 'row';
 
   const [mode, setMode] = useState<Mode>('signin');
   const [step, setStep] = useState<Step>('form');
@@ -44,6 +53,7 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
+  const [focused, setFocused] = useState<'name' | 'email' | 'password' | null>(null);
 
   const submit = async () => {
     if (pending) return;
@@ -75,11 +85,25 @@ export default function AuthScreen() {
 
   // U+2066/U+2069 (LRI/PDI) bidi-isolate the email inside Arabic/Kurdish copy.
   const target = `⁦${email.trim()}⁩`;
-  const inputBase = { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border };
+  const dangerWash = scheme === 'dark' ? 'rgba(251, 113, 133, 0.14)' : 'rgba(225, 29, 72, 0.08)';
+  const inputStyle = (field: 'name' | 'email' | 'password') => [
+    styles.input,
+    {
+      color: theme.text,
+      backgroundColor: theme.backgroundElement,
+      borderColor: focused === field ? theme.tint : 'transparent',
+    },
+  ];
   const closeBtn = (
-    <Pressable onPress={() => router.back()} hitSlop={8}>
-      <Ionicons name="close" size={24} color={theme.text} />
-    </Pressable>
+    <PressableScale
+      scaleTo={0.9}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={t('common_close')}
+      onPress={() => router.back()}
+      style={[styles.closeBtn, { backgroundColor: theme.backgroundElement }]}>
+      <Ionicons name="close" size={20} color={theme.text} />
+    </PressableScale>
   );
 
   const submitDisabled =
@@ -88,59 +112,88 @@ export default function AuthScreen() {
   return (
     <Screen title={t('auth_title')} headerRight={closeBtn}>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <View style={styles.brand}>
-          <ThemedText style={[styles.brandName, { color: theme.tint }]}>{t('appName')}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.brandTag}>
-            {t('auth_welcome')}
-          </ThemedText>
-        </View>
+        <Animated.View entering={FadeInDown.duration(360)} style={{ boxShadow: Shadow.card, borderRadius: Radius.xxl }}>
+          <LinearGradient
+            colors={[theme.tint, theme.accent]}
+            start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+            end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+            style={styles.hero}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="storefront-outline" size={26} color={theme.onTint} />
+            </View>
+            <ThemedText style={[styles.brandName, { color: theme.onTint }]}>{t('appName')}</ThemedText>
+            <ThemedText type="small" style={[styles.brandTag, { color: theme.onTint }]}>
+              {t('auth_welcome')}
+            </ThemedText>
+          </LinearGradient>
+        </Animated.View>
 
         {step === 'confirmSent' || step === 'resetSent' ? (
-          <View style={styles.notice}>
-            <Ionicons name="mail-unread-outline" size={44} color={theme.tint} />
+          <Animated.View entering={FadeInDown.duration(360)} style={styles.notice}>
+            <View style={[styles.noticeIcon, { backgroundColor: theme.tintSoft }]}>
+              <Ionicons name="mail-unread-outline" size={36} color={theme.tint} />
+            </View>
             <ThemedText style={styles.noticeTitle}>
               {t(step === 'confirmSent' ? 'auth_confirmTitle' : 'auth_resetTitle')}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.noticeHint}>
               {t(step === 'confirmSent' ? 'auth_confirmHint' : 'auth_resetSentTo', { target })}
             </ThemedText>
-            <Pressable onPress={() => setStep('form')} hitSlop={8}>
-              <ThemedText type="small" themeColor="tint">
+            <PressableScale
+              scaleTo={0.96}
+              accessibilityRole="button"
+              accessibilityLabel={t('common_close')}
+              onPress={() => setStep('form')}
+              style={[styles.noticeClose, { backgroundColor: theme.tintSoft }]}>
+              <ThemedText type="smallBold" themeColor="tint">
                 {t('common_close')}
               </ThemedText>
-            </Pressable>
-          </View>
+            </PressableScale>
+          </Animated.View>
         ) : (
-          <>
+          <Animated.View entering={FadeInDown.duration(360).delay(55)} style={styles.formStack}>
             {step === 'form' && (
-              <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View
+                style={[
+                  styles.segment,
+                  { backgroundColor: theme.backgroundElement, flexDirection: rowDir },
+                ]}>
                 {(['signin', 'signup'] as Mode[]).map((m) => {
                   const active = mode === m;
                   return (
-                    <Pressable
+                    <PressableScale
                       key={m}
+                      scaleTo={0.97}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={t(m === 'signin' ? 'auth_signin_tab' : 'auth_signup_tab')}
                       onPress={() => {
                         setMode(m);
                         setErrorCode(null);
                       }}
                       style={[
                         styles.segmentItem,
-                        { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
+                        active && { backgroundColor: theme.tint, boxShadow: Shadow.card },
                       ]}>
                       <ThemedText
-                        style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
+                        style={{ color: active ? theme.onTint : theme.textSecondary, fontWeight: active ? '700' : '500' }}>
                         {t(m === 'signin' ? 'auth_signin_tab' : 'auth_signup_tab')}
                       </ThemedText>
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
               </View>
             )}
 
             {errorCode != null && (
-              <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-                {t(ERR_KEY[errorCode])}
-              </ThemedText>
+              <Animated.View
+                entering={FadeInDown.duration(240)}
+                style={[styles.alert, { backgroundColor: dangerWash, flexDirection: rowDir }]}>
+                <Ionicons name="alert-circle" size={16} color={theme.danger} />
+                <ThemedText type="small" themeColor="danger" style={[styles.alertText, { textAlign: align }]}>
+                  {t(ERR_KEY[errorCode])}
+                </ThemedText>
+              </Animated.View>
             )}
 
             {step === 'form' && mode === 'signup' && (
@@ -153,7 +206,9 @@ export default function AuthScreen() {
                   onChangeText={setName}
                   placeholder={t('auth_ph_name')}
                   placeholderTextColor={theme.textSecondary}
-                  style={[styles.input, inputBase, { textAlign: align }]}
+                  onFocus={() => setFocused('name')}
+                  onBlur={() => setFocused(null)}
+                  style={[inputStyle('name'), { textAlign: align }]}
                 />
               </>
             )}
@@ -169,7 +224,9 @@ export default function AuthScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              style={[styles.input, inputBase, styles.ltr]}
+              onFocus={() => setFocused('email')}
+              onBlur={() => setFocused(null)}
+              style={[inputStyle('email'), styles.ltr]}
             />
 
             {step === 'form' ? (
@@ -177,7 +234,15 @@ export default function AuthScreen() {
                 <ThemedText type="smallBold" style={{ textAlign: align }}>
                   {t('auth_passwordLabel')}
                 </ThemedText>
-                <View style={[styles.passwordRow, inputBase, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <View
+                  style={[
+                    styles.passwordRow,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: focused === 'password' ? theme.tint : 'transparent',
+                      flexDirection: rowDir,
+                    },
+                  ]}>
                   <TextInput
                     value={password}
                     onChangeText={setPassword}
@@ -186,9 +251,15 @@ export default function AuthScreen() {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
                     style={[styles.passwordInput, { color: theme.text }, styles.ltr]}
                   />
-                  <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => setShowPassword((s) => !s)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('auth_passwordLabel')}>
                     <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textSecondary} />
                   </Pressable>
                 </View>
@@ -198,6 +269,7 @@ export default function AuthScreen() {
                   onPress={submit}
                   pending={pending}
                   disabled={submitDisabled}
+                  isRTL={isRTL}
                 />
 
                 {mode === 'signin' && (
@@ -215,7 +287,13 @@ export default function AuthScreen() {
               </>
             ) : (
               <>
-                <PrimaryButton label={t('auth_sendReset')} onPress={sendReset} pending={pending} disabled={!email.trim()} />
+                <PrimaryButton
+                  label={t('auth_sendReset')}
+                  onPress={sendReset}
+                  pending={pending}
+                  disabled={!email.trim()}
+                  isRTL={isRTL}
+                />
                 <Pressable
                   onPress={() => {
                     setStep('form');
@@ -228,7 +306,7 @@ export default function AuthScreen() {
                 </Pressable>
               </>
             )}
-          </>
+          </Animated.View>
         )}
       </ScrollView>
     </Screen>
@@ -240,48 +318,87 @@ function PrimaryButton({
   onPress,
   pending,
   disabled,
+  isRTL,
 }: {
   label: string;
   onPress: () => void;
   pending: boolean;
   disabled?: boolean;
+  isRTL: boolean;
 }) {
   const theme = useTheme();
   const off = pending || disabled;
   return (
-    <Pressable
+    <PressableScale
+      haptic
+      scaleTo={0.97}
       onPress={onPress}
       disabled={off}
-      style={({ pressed }) => [
-        styles.primary,
-        { backgroundColor: theme.tint, opacity: off ? 0.6 : 1 },
-        pressed && !off && styles.pressed,
-      ]}>
-      {pending ? (
-        <ActivityIndicator color={theme.onTint} />
-      ) : (
-        <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>{label}</ThemedText>
-      )}
-    </Pressable>
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: off, busy: pending }}
+      style={[styles.primaryWrap, { opacity: off ? 0.55 : 1 }]}>
+      <LinearGradient
+        colors={[theme.tint, theme.accent]}
+        start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
+        end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
+        style={styles.primary}>
+        {pending ? (
+          <ActivityIndicator color={theme.onTint} />
+        ) : (
+          <ThemedText style={{ color: theme.onTint, fontWeight: '800', fontSize: 16 }}>{label}</ThemedText>
+        )}
+      </LinearGradient>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   body: { padding: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.six },
-  brand: { alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.four },
-  brandName: { fontSize: 34, fontWeight: '800', lineHeight: 40 },
-  brandTag: { textAlign: 'center' },
-  segment: { gap: Spacing.two },
+  hero: {
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.xxl,
+  },
+  heroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    marginBottom: Spacing.one,
+  },
+  brandName: { fontSize: 30, fontWeight: '800', lineHeight: 36 },
+  brandTag: { textAlign: 'center', opacity: 0.9 },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formStack: { gap: Spacing.three },
+  segment: { gap: Spacing.one, borderRadius: Radius.pill, padding: Spacing.one },
   segmentItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two + Spacing.one,
+    borderRadius: Radius.pill,
   },
+  alert: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.lg,
+  },
+  alertText: { flex: 1 },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderWidth: INPUT_BORDER_WIDTH,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 15,
@@ -290,14 +407,34 @@ const styles = StyleSheet.create({
   ltr: { textAlign: 'left', writingDirection: 'ltr' },
   passwordRow: {
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radius.md,
+    borderWidth: INPUT_BORDER_WIDTH,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.three,
   },
   passwordInput: { flex: 1, paddingVertical: Spacing.three, fontSize: 15 },
-  primary: { alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.three, borderRadius: Radius.md, minHeight: 48 },
-  pressed: { opacity: 0.85 },
+  primaryWrap: { borderRadius: Radius.pill, boxShadow: Shadow.fab },
+  primary: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.pill,
+    minHeight: 48,
+  },
   notice: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.four },
-  noticeTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  noticeIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
+  noticeTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
   noticeHint: { textAlign: 'center' },
+  noticeClose: {
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two + Spacing.one,
+    borderRadius: Radius.pill,
+  },
 });
