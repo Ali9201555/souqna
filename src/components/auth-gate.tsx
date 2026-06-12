@@ -8,6 +8,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/data/AuthProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 /**
  * Gate a subtree behind auth. Guests see a sign-in prompt (→ /auth modal);
@@ -21,6 +22,10 @@ export function AuthGate({ title, message, children }: { title: string; message:
   const theme = useTheme();
   const { t } = useI18n();
   const router = useRouter();
+
+  // Demo mode (no backend configured) has no auth to gate behind — posting is
+  // local-only there, so the gate would just dead-end testers.
+  if (!isSupabaseConfigured) return <>{children}</>;
 
   if (status === 'authenticated') return <>{children}</>;
 
