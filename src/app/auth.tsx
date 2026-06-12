@@ -1,21 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { AUTH_USES_EMAIL, useAuth, type AuthErrorCode } from '@/data/AuthProvider';
+import { useAuth, type AuthErrorCode } from '@/data/AuthProvider';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import type { TKey } from '@/i18n/translations';
 
-const RESEND_SECONDS = 60;
-
 const ERR_KEY: Record<AuthErrorCode, TKey> = {
-  invalid_phone: AUTH_USES_EMAIL ? 'auth_err_invalid_email' : 'auth_err_invalid_phone',
+  invalid_phone: 'auth_err_invalid_phone',
+  invalid_email: 'auth_err_invalid_email',
   invalid_code: 'auth_err_invalid_code',
+  invalid_credentials: 'auth_err_invalid_credentials',
+  email_in_use: 'auth_err_email_in_use',
+  email_not_confirmed: 'auth_err_email_not_confirmed',
+  weak_password: 'auth_err_weak_password',
   rate_limited: 'auth_err_rate_limited',
   expired: 'auth_err_expired',
   network: 'auth_err_network',
@@ -24,73 +27,54 @@ const ERR_KEY: Record<AuthErrorCode, TKey> = {
 };
 
 type Mode = 'signin' | 'signup';
+type Step = 'form' | 'forgot' | 'resetSent' | 'confirmSent';
 
 export default function AuthScreen() {
   const router = useRouter();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
-  const { signInWithPhone, verifyOtp, setDisplayName } = useAuth();
+  const { signUpWithPassword, signInWithPassword, requestPasswordReset } = useAuth();
   const align = isRTL ? 'right' : 'left';
 
   const [mode, setMode] = useState<Mode>('signin');
-  const [step, setStep] = useState<'identify' | 'otp'>('identify');
+  const [step, setStep] = useState<Step>('form');
   const [name, setName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [errorCode, setErrorCode] = useState<AuthErrorCode | null>(null);
-  const [resendIn, setResendIn] = useState(0);
 
-  // One interval for the whole otp step (not re-armed per tick); ticking at 0
-  // is a same-value setState, which React bails out of.
-  useEffect(() => {
-    if (step !== 'otp') return;
-    const id = setInterval(() => setResendIn((s) => (s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [step]);
-
-  const send = async () => {
+  const submit = async () => {
     if (pending) return;
     setPending(true);
     setErrorCode(null);
-    const res = await signInWithPhone(identifier);
+    if (mode === 'signup') {
+      const res = await signUpWithPassword({ name, email, password });
+      setPending(false);
+      if (!res.ok) setErrorCode(res.code);
+      else if ('pendingConfirmation' in res) setStep('confirmSent');
+      else router.back();
+    } else {
+      const res = await signInWithPassword(email, password);
+      setPending(false);
+      if (!res.ok) setErrorCode(res.code);
+      else router.back();
+    }
+  };
+
+  const sendReset = async () => {
+    if (pending) return;
+    setPending(true);
+    setErrorCode(null);
+    const res = await requestPasswordReset(email);
     setPending(false);
-    if (res.ok) {
-      setStep('otp');
-      setCode('');
-      setResendIn(RESEND_SECONDS);
-    } else {
-      setErrorCode(res.code);
-    }
+    if (res.ok) setStep('resetSent');
+    else setErrorCode(res.code);
   };
 
-  const verify = async () => {
-    if (pending) return;
-    setPending(true);
-    setErrorCode(null);
-    const res = await verifyOtp(identifier, code);
-    if (res.ok) {
-      // OTP signup and sign-in are the same flow server-side; "create account"
-      // just adds the display name. Failure here is non-fatal — the name can be
-      // edited from the profile later.
-      if (mode === 'signup' && name.trim()) await setDisplayName(name);
-      setPending(false);
-      router.back();
-    } else {
-      setPending(false);
-      setErrorCode(res.code);
-    }
-  };
-
-  const editIdentifier = () => {
-    setStep('identify');
-    setCode('');
-    setErrorCode(null);
-  };
-
-  // U+2066/U+2069 (LRI/PDI) bidi-isolate the number/email so "+964 …" doesn't
-  // visually reorder inside an Arabic/Kurdish sentence.
-  const target = `⁦${AUTH_USES_EMAIL ? identifier.trim() : `+964 ${identifier.replace(/\D/g, '')}`}⁩`;
+  // U+2066/U+2069 (LRI/PDI) bidi-isolate the email inside Arabic/Kurdish copy.
+  const target = `⁦${email.trim()}⁩`;
   const inputBase = { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border };
   const closeBtn = (
     <Pressable onPress={() => router.back()} hitSlop={8}>
@@ -98,7 +82,8 @@ export default function AuthScreen() {
     </Pressable>
   );
 
-  const sendDisabled = !identifier.trim() || (mode === 'signup' && !name.trim());
+  const submitDisabled =
+    !email.trim() || password.length === 0 || (mode === 'signup' && !name.trim());
 
   return (
     <Screen title={t('auth_title')} headerRight={closeBtn}>
@@ -110,39 +95,55 @@ export default function AuthScreen() {
           </ThemedText>
         </View>
 
-        {step === 'identify' && (
-          <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            {(['signin', 'signup'] as Mode[]).map((m) => {
-              const active = mode === m;
-              return (
-                <Pressable
-                  key={m}
-                  onPress={() => {
-                    setMode(m);
-                    setErrorCode(null);
-                  }}
-                  style={[
-                    styles.segmentItem,
-                    { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
-                  ]}>
-                  <ThemedText style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
-                    {t(m === 'signin' ? 'auth_signin_tab' : 'auth_signup_tab')}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
+        {step === 'confirmSent' || step === 'resetSent' ? (
+          <View style={styles.notice}>
+            <Ionicons name="mail-unread-outline" size={44} color={theme.tint} />
+            <ThemedText style={styles.noticeTitle}>
+              {t(step === 'confirmSent' ? 'auth_confirmTitle' : 'auth_resetTitle')}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.noticeHint}>
+              {t(step === 'confirmSent' ? 'auth_confirmHint' : 'auth_resetSentTo', { target })}
+            </ThemedText>
+            <Pressable onPress={() => setStep('form')} hitSlop={8}>
+              <ThemedText type="small" themeColor="tint">
+                {t('common_close')}
+              </ThemedText>
+            </Pressable>
           </View>
-        )}
-
-        {errorCode != null && (
-          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
-            {t(ERR_KEY[errorCode])}
-          </ThemedText>
-        )}
-
-        {step === 'identify' ? (
+        ) : (
           <>
-            {mode === 'signup' && (
+            {step === 'form' && (
+              <View style={[styles.segment, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                {(['signin', 'signup'] as Mode[]).map((m) => {
+                  const active = mode === m;
+                  return (
+                    <Pressable
+                      key={m}
+                      onPress={() => {
+                        setMode(m);
+                        setErrorCode(null);
+                      }}
+                      style={[
+                        styles.segmentItem,
+                        { borderColor: theme.border, backgroundColor: active ? theme.tint : theme.backgroundElement },
+                      ]}>
+                      <ThemedText
+                        style={{ color: active ? theme.onTint : theme.text, fontWeight: active ? '700' : '500' }}>
+                        {t(m === 'signin' ? 'auth_signin_tab' : 'auth_signup_tab')}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {errorCode != null && (
+              <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+                {t(ERR_KEY[errorCode])}
+              </ThemedText>
+            )}
+
+            {step === 'form' && mode === 'signup' && (
               <>
                 <ThemedText type="smallBold" style={{ textAlign: align }}>
                   {t('auth_nameLabel')}
@@ -158,82 +159,75 @@ export default function AuthScreen() {
             )}
 
             <ThemedText type="smallBold" style={{ textAlign: align }}>
-              {AUTH_USES_EMAIL ? t('auth_emailLabel') : t('auth_phoneLabel')}
+              {t('auth_emailLabel')}
             </ThemedText>
-
-            {AUTH_USES_EMAIL ? (
-              <TextInput
-                value={identifier}
-                onChangeText={setIdentifier}
-                placeholder={t('auth_emailPlaceholder')}
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={[styles.input, inputBase, styles.ltr]}
-              />
-            ) : (
-              <View style={[styles.phoneRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                <View style={[styles.prefix, { borderColor: theme.border }]}>
-                  <ThemedText style={{ color: theme.textSecondary }}>+964</ThemedText>
-                </View>
-                <TextInput
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  placeholder={t('auth_phonePlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="phone-pad"
-                  style={[styles.phoneInput, { color: theme.text }, styles.ltr]}
-                />
-              </View>
-            )}
-
-            <PrimaryButton
-              label={t(mode === 'signup' ? 'auth_signup_tab' : 'auth_sendCode')}
-              onPress={send}
-              pending={pending}
-              disabled={sendDisabled}
-            />
-          </>
-        ) : (
-          <>
-            <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-              {t('auth_otpSentTo', { target })}
-            </ThemedText>
-            {AUTH_USES_EMAIL && (
-              <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: align }}>
-                {t('auth_linkHint')}
-              </ThemedText>
-            )}
-
-            <ThemedText type="smallBold" style={{ textAlign: align }}>
-              {t('auth_otpLabel')}
-            </ThemedText>
-
             <TextInput
-              value={code}
-              onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
-              placeholder={t('auth_otpPlaceholder')}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('auth_emailPlaceholder')}
               placeholderTextColor={theme.textSecondary}
-              keyboardType="number-pad"
-              maxLength={6}
-              style={[styles.input, inputBase, styles.otpInput]}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={[styles.input, inputBase, styles.ltr]}
             />
 
-            <PrimaryButton label={t('auth_verify')} onPress={verify} pending={pending} disabled={code.length < 6} />
+            {step === 'form' ? (
+              <>
+                <ThemedText type="smallBold" style={{ textAlign: align }}>
+                  {t('auth_passwordLabel')}
+                </ThemedText>
+                <View style={[styles.passwordRow, inputBase, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('auth_ph_password')}
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.passwordInput, { color: theme.text }, styles.ltr]}
+                  />
+                  <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={8}>
+                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
 
-            <View style={[styles.otpFooter, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-              <Pressable onPress={editIdentifier} hitSlop={8}>
-                <ThemedText type="small" themeColor="tint">
-                  {t('auth_wrongNumber')}
-                </ThemedText>
-              </Pressable>
-              <Pressable onPress={send} disabled={resendIn > 0 || pending} hitSlop={8}>
-                <ThemedText type="small" themeColor={resendIn > 0 ? 'textSecondary' : 'tint'}>
-                  {resendIn > 0 ? t('auth_resendIn', { seconds: resendIn }) : t('auth_resend')}
-                </ThemedText>
-              </Pressable>
-            </View>
+                <PrimaryButton
+                  label={t(mode === 'signup' ? 'auth_signup_tab' : 'auth_signin_tab')}
+                  onPress={submit}
+                  pending={pending}
+                  disabled={submitDisabled}
+                />
+
+                {mode === 'signin' && (
+                  <Pressable
+                    onPress={() => {
+                      setStep('forgot');
+                      setErrorCode(null);
+                    }}
+                    hitSlop={8}>
+                    <ThemedText type="small" themeColor="tint" style={{ textAlign: 'center' }}>
+                      {t('auth_forgotPassword')}
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </>
+            ) : (
+              <>
+                <PrimaryButton label={t('auth_sendReset')} onPress={sendReset} pending={pending} disabled={!email.trim()} />
+                <Pressable
+                  onPress={() => {
+                    setStep('form');
+                    setErrorCode(null);
+                  }}
+                  hitSlop={8}>
+                  <ThemedText type="small" themeColor="tint" style={{ textAlign: 'center' }}>
+                    {t('common_close')}
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -292,19 +286,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 15,
   },
-  // Phone numbers, emails, and OTP codes are always LTR even in an RTL UI.
+  // Emails and passwords are always LTR even in an RTL UI.
   ltr: { textAlign: 'left', writingDirection: 'ltr' },
-  otpInput: { textAlign: 'center', writingDirection: 'ltr', fontSize: 22, letterSpacing: 6 },
-  phoneRow: {
-    flexDirection: 'row',
+  passwordRow: {
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.md,
-    overflow: 'hidden',
+    paddingHorizontal: Spacing.three,
   },
-  prefix: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, borderRightWidth: StyleSheet.hairlineWidth },
-  phoneInput: { flex: 1, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 15 },
+  passwordInput: { flex: 1, paddingVertical: Spacing.three, fontSize: 15 },
   primary: { alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.three, borderRadius: Radius.md, minHeight: 48 },
   pressed: { opacity: 0.85 },
-  otpFooter: { alignItems: 'center', justifyContent: 'space-between' },
+  notice: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.four },
+  noticeTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center' },
+  noticeHint: { textAlign: 'center' },
 });

@@ -27,6 +27,7 @@ export default function RootLayout() {
                   <Stack.Screen name="saved" options={{ headerShown: true }} />
                   <Stack.Screen name="discover" options={{ headerShown: false }} />
                   <Stack.Screen name="auth" options={{ presentation: 'modal', headerShown: false }} />
+                  <Stack.Screen name="reset-password" options={{ headerShown: true }} />
                 </Stack>
                 <StatusBar style="auto" />
               </ListingsProvider>
