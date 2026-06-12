@@ -50,6 +50,8 @@ type AuthContextValue = {
   signInWithPhone: (phone: string) => Promise<AuthResult>;
   /** Verify the OTP. On success, onAuthStateChange updates state. Never throws. */
   verifyOtp: (phone: string, code: string) => Promise<AuthResult>;
+  /** Set the signed-in user's display name on their profile row. Never throws. */
+  setDisplayName: (name: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 };
 
@@ -186,6 +188,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { ok: false, code: mapError(error) } : { ok: true };
   }, []);
 
+  const setDisplayName = useCallback(
+    async (name: string): Promise<AuthResult> => {
+      if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+      const trimmed = name.trim();
+      const uid = session?.user.id;
+      if (!uid || !trimmed) return { ok: false, code: 'unknown' };
+      const { error } = await supabase.from('profiles').update({ name: trimmed }).eq('id', uid);
+      if (error) return { ok: false, code: mapError(error) };
+      // The fetch effect delivers the canonical row; this keeps the UI instant.
+      setProfile((prev) => (prev ? { ...prev, name: trimmed } : prev));
+      return { ok: true };
+    },
+    [session],
+  );
+
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut({ scope: 'local' });
@@ -201,9 +218,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: status === 'authenticated',
       signInWithPhone,
       verifyOtp,
+      setDisplayName,
       signOut,
     }),
-    [session, profile, status, signInWithPhone, verifyOtp, signOut],
+    [session, profile, status, signInWithPhone, verifyOtp, setDisplayName, signOut],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;
