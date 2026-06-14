@@ -38,7 +38,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t, isRTL } = useI18n();
-  const { isAuthenticated, signInWithOAuth } = useAuth();
+  const { isAuthenticated, signInWithOAuth, oauthError, clearOAuthError } = useAuth();
 
   const [pending, setPending] = useState<OAuthProvider | null>(null);
   const [showSoon, setShowSoon] = useState(false);
@@ -54,6 +54,7 @@ export default function WelcomeScreen() {
   const onSocial = async (provider: OAuthProvider) => {
     if (pending) return;
     setShowSoon(false);
+    clearOAuthError();
     setPending(provider);
     const res = await signInWithOAuth(provider);
     setPending(null);
@@ -136,6 +137,17 @@ export default function WelcomeScreen() {
               disabled={pending != null}
               rowDir={rowDir}
             />
+
+            {oauthError != null && (
+              <Animated.View
+                entering={FadeIn.duration(220)}
+                style={[styles.soon, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
+                <Ionicons name="alert-circle" size={16} color={theme.danger} />
+                <ThemedText type="small" themeColor="danger" style={styles.soonText}>
+                  {t('welcome_oauthFailed', { detail: oauthError })}
+                </ThemedText>
+              </Animated.View>
+            )}
 
             {showSoon && (
               <Animated.View
