@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
+import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -37,6 +38,7 @@ import {
   type SortMode,
   type VehicleFilters,
 } from '@/data/section-filters';
+import { useKitchens } from '@/data/KitchensProvider';
 import { hasSection } from '@/data/sections';
 import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -452,6 +454,50 @@ function RealEstateSection() {
   );
 }
 
+/** Horizontal rail of kitchen storefronts at the top of the Food section. */
+function KitchensRail() {
+  const { kitchens } = useKitchens();
+  const router = useRouter();
+  const theme = useTheme();
+  const { t, lang, isRTL } = useI18n();
+  if (kitchens.length === 0) return null;
+  return (
+    <View style={styles.rail}>
+      <ThemedText type="smallBold" style={{ paddingHorizontal: Spacing.three, textAlign: isRTL ? 'right' : 'left' }}>
+        {t('kitchen_browse')}
+      </ThemedText>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.railContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        {kitchens.map((k) => (
+          <PressableScale
+            key={k.id}
+            haptic
+            scaleTo={0.96}
+            accessibilityRole="button"
+            accessibilityLabel={k.name}
+            onPress={() => router.push({ pathname: '/kitchen/[id]', params: { id: k.id } })}
+            style={[styles.kitchenCard, { backgroundColor: theme.surface, boxShadow: Shadow.card }]}>
+            {k.coverUrl ? (
+              <Image source={{ uri: k.coverUrl }} style={styles.kitchenCover} contentFit="cover" />
+            ) : (
+              <View style={[styles.kitchenCover, styles.kitchenCoverEmpty, { backgroundColor: theme.tintSoft }]}>
+                <Ionicons name="restaurant" size={22} color={theme.tint} />
+              </View>
+            )}
+            <View style={styles.kitchenBody}>
+              <ThemedText type="small" numberOfLines={1} style={[styles.kitchenName, { textAlign: isRTL ? 'right' : 'left' }]}>
+                {k.name}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                {k.cuisines.map((c) => getCuisine(c)?.name[lang]).filter(Boolean).join(' · ')}
+              </ThemedText>
+            </View>
+          </PressableScale>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 function FoodSection() {
   const { t, lang, isRTL } = useI18n();
   const { base, isLoading, error, refetch } = useSectionBase('food');
@@ -482,6 +528,7 @@ function FoodSection() {
 
   const header = (
     <View style={styles.controls}>
+      <KitchensRail />
       <View style={[styles.chipRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         <FilterChip icon="restaurant-outline" active={filters.cuisine != null} label={filters.cuisine ? (getCuisine(filters.cuisine)?.name[lang] ?? t('attr_cuisine')) : t('attr_cuisine')} onPress={() => setPicker('cuisine')} />
         <FilterChip icon="fast-food-outline" active={filters.dishType != null} label={filters.dishType ? (getDishType(filters.dishType)?.name[lang] ?? t('attr_dishType')) : t('attr_dishType')} onPress={() => setPicker('dish')} />
@@ -516,6 +563,13 @@ function FoodSection() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   controls: { paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.two },
+  rail: { gap: Spacing.one + 2 },
+  railContent: { gap: Spacing.two, paddingHorizontal: Spacing.three },
+  kitchenCard: { width: 160, borderRadius: Radius.lg, overflow: 'hidden' },
+  kitchenCover: { width: '100%', aspectRatio: 16 / 9 },
+  kitchenCoverEmpty: { alignItems: 'center', justifyContent: 'center' },
+  kitchenBody: { padding: Spacing.two, gap: 1 },
+  kitchenName: { fontWeight: '700' },
   segment: { gap: Spacing.two, paddingHorizontal: Spacing.three },
   segmentItem: {
     flex: 1,

@@ -114,6 +114,21 @@ export interface ListingReport {
   createdAt: number;
 }
 
+/** A home-cook storefront (one per user). Dishes are the owner's food listings. */
+export interface Kitchen {
+  id: string;
+  ownerId: string;
+  name: string;
+  bio: string;
+  /** Cover image URL. */
+  coverUrl?: string;
+  /** Cuisine ids from CUISINES. */
+  cuisines: string[];
+  governorateId?: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+}
+
 export interface ChatThread {
   id: string;
   listingId: string;

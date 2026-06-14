@@ -1,4 +1,4 @@
-import type { ChatThread, Listing, SellerProfile } from '@/types';
+import type { ChatThread, Kitchen, Listing, SellerProfile } from '@/types';
 
 export const DEMO_USER_ID = 'me';
 
@@ -189,6 +189,29 @@ export const SEED_LISTINGS: Listing[] = [
     priceIqd: 35_000, negotiable: true, categoryId: 'food', governorateId: 'najaf',
     condition: 'new', images: img('baklava', 2), sellerId: 's1', createdAt: days(1),
     attributes: { kind: 'food', cuisine: 'levantine', dishType: 'dessert', servings: 10, leadTimeHours: 24, fulfillment: 'both' },
+  },
+];
+
+export const SEED_KITCHENS: Kitchen[] = [
+  {
+    id: 'k1',
+    ownerId: 's2',
+    name: 'مطبخ أم أحمد',
+    bio: 'أكل بيتي عراقي أصيل، نطبخ بالطريقة البغدادية القديمة. دولمة، تبسي، كبة، ومحاشي حسب الطلب. النظافة والجودة أولاً.',
+    coverUrl: img('kitchen-um-ahmad', 1)[0],
+    cuisines: ['iraqi', 'levantine'],
+    governorateId: 'baghdad',
+    createdAt: days(40),
+  },
+  {
+    id: 'k2',
+    ownerId: 's1',
+    name: 'حلويات بيت الشام',
+    bio: 'حلويات شرقية بيتية بأيدي خبيرة: بقلاوة، كليجة، وكنافة بالفستق الحلبي. طلبات المناسبات والأعراس متوفرة.',
+    coverUrl: img('kitchen-sham', 1)[0],
+    cuisines: ['sweets', 'levantine'],
+    governorateId: 'najaf',
+    createdAt: days(70),
   },
 ];
 
