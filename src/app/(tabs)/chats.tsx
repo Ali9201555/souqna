@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import Animated, {
-  FadeIn,
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
@@ -18,6 +17,7 @@ import { Screen } from '@/components/screen';
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Motion, Radius, Shadow, Spacing } from '@/constants/theme';
+import { useChat } from '@/data/ChatProvider';
 import { useListings } from '@/data/ListingsProvider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -78,7 +78,8 @@ function UnreadBadge({ count }: { count: number }) {
 }
 
 export default function ChatsScreen() {
-  const { threads, getListing, getSeller, isLoading } = useListings();
+  const { threads, isLoading, getParty } = useChat();
+  const { getListing } = useListings();
   const { t, isRTL } = useI18n();
   const theme = useTheme();
   const scheme = useColorScheme();
@@ -129,15 +130,6 @@ export default function ChatsScreen() {
 
   return (
     <Screen title={t('chats_title')}>
-      <Animated.View
-        entering={FadeIn.duration(300)}
-        style={[styles.note, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
-        <Ionicons name="information-circle-outline" size={16} color={theme.tint} />
-        <ThemedText type="small" themeColor="tint" style={[styles.noteText, { textAlign: align }]}>
-          {t('chats_demoNote')}
-        </ThemedText>
-      </Animated.View>
-
       <FlatList
         data={threads}
         keyExtractor={(thread) => thread.id}
@@ -145,19 +137,19 @@ export default function ChatsScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => {
           const listing = getListing(item.listingId);
-          const seller = getSeller(item.withSellerId);
+          const party = getParty(item.withSellerId);
           const unread = item.unread > 0;
           return (
             <PressableScale
               entering={FadeInDown.duration(360).delay(Math.min(index, MAX_STAGGER_INDEX) * 55)}
               scaleTo={0.98}
               accessibilityRole="button"
-              accessibilityLabel={seller?.name}
-              onPress={() => router.push({ pathname: '/listing/[id]', params: { id: item.listingId } })}
+              accessibilityLabel={party?.name}
+              onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.id } })}
               style={[cardStyle, { flexDirection: rowDir }]}>
               <ThreadAvatar
-                name={seller?.name ?? '?'}
-                color={seller?.avatarColor ?? theme.tint}
+                name={party?.name ?? '?'}
+                color={party?.avatarColor ?? theme.tint}
                 unread={unread}
               />
               <View style={styles.rowBody}>
@@ -165,7 +157,7 @@ export default function ChatsScreen() {
                   <ThemedText
                     numberOfLines={1}
                     style={[styles.rowName, unread && styles.rowNameUnread, { textAlign: align }]}>
-                    {seller?.name}
+                    {party?.name}
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.time}>
                     {formatRelativeTime(item.lastAt, t)}
