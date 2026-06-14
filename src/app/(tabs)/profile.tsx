@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/data/AuthProvider';
+import { useKitchens } from '@/data/KitchensProvider';
 import { useListings } from '@/data/ListingsProvider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,6 +29,7 @@ const MAX_STAGGER_INDEX = 8;
 export default function ProfileScreen() {
   const { myListings, favorites, isLoading } = useListings();
   const { isAuthenticated, user, profile, signOut } = useAuth();
+  const { myKitchen } = useKitchens();
   const { t, lang, setLang, isRTL } = useI18n();
   const theme = useTheme();
   const scheme = useColorScheme();
@@ -148,6 +150,18 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
           )}
+          <PressableScale
+            haptic
+            scaleTo={0.95}
+            accessibilityRole="button"
+            accessibilityLabel={myKitchen ? t('kitchen_my') : t('kitchen_open')}
+            onPress={() => router.push(myKitchen ? { pathname: '/kitchen/[id]', params: { id: myKitchen.id } } : '/kitchen/edit')}
+            style={[styles.chip, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
+            <Ionicons name="storefront-outline" size={16} color={theme.tint} />
+            <ThemedText type="smallBold" themeColor="tint">
+              {myKitchen ? t('kitchen_my') : t('kitchen_open')}
+            </ThemedText>
+          </PressableScale>
         </Animated.View>
 
         <Section title={t('profile_language')} align={align} delay={110}>
