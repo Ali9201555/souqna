@@ -30,7 +30,7 @@ import {
   type VehicleFilters,
 } from '@/data/section-filters';
 import { hasSection } from '@/data/sections';
-import { VEHICLE_MAKES } from '@/data/vehicle-makes';
+import { VEHICLE_MAKES, getModelsForMake, getVehicleMake, getVehicleModel, modelLabel } from '@/data/vehicle-makes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
@@ -233,7 +233,7 @@ function VehiclesSection() {
   const [filters, setFilters] = useState<VehicleFilters>({});
   const [priceIdx, setPriceIdx] = useState<number | null>(null);
   const [sort, setSort] = useState<SortMode>('newest');
-  const [picker, setPicker] = useState<null | 'make' | 'year' | 'mileage' | 'transmission' | 'price' | 'sort'>(null);
+  const [picker, setPicker] = useState<null | 'make' | 'model' | 'trim' | 'year' | 'mileage' | 'transmission' | 'price' | 'sort'>(null);
 
   const effective: VehicleFilters = useMemo(
     () => ({ ...filters, price: priceIdx != null ? CAR_PRICE_BRACKETS[priceIdx] : undefined }),
@@ -241,10 +241,34 @@ function VehiclesSection() {
   );
   const results = useMemo(() => sortListings(base.filter((l) => matchesVehicleFilters(l, effective)), sort), [base, effective, sort]);
 
+  // Choosing a make invalidates the previously-selected model.
+  const setMake = (make: string | undefined) => setFilters((f) => ({ ...f, make, model: undefined }));
+
+  // Trims actually present in the listings, so the picker never offers a dead end.
+  const trimsInData = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of base) {
+      const a = l.attributes;
+      if (a?.kind === 'vehicle' && a.trim?.trim()) set.add(a.trim.trim());
+    }
+    return [...set].sort((x, y) => x.localeCompare(y));
+  }, [base]);
+
+  const models = getModelsForMake(filters.make);
   const makeOptions: PickerOption[] = [
     { id: null, label: t('search_all') },
     ...VEHICLE_MAKES.map((m) => ({ id: m.id, label: m.name[lang] })),
   ];
+  const modelOptions: PickerOption[] = [
+    { id: null, label: t('search_all') },
+    ...models.map((m) => ({ id: m.id, label: modelLabel(m, lang) })),
+  ];
+  const trimOptions: PickerOption[] = [
+    { id: null, label: t('search_all') },
+    ...trimsInData.map((tr) => ({ id: tr, label: tr })),
+  ];
+  const selectedModelLabel =
+    filters.make && filters.model ? (getVehicleModel(filters.make, filters.model)?.en ?? filters.model) : null;
   const yearOptions: PickerOption[] = [
     { id: null, label: t('search_all') },
     ...YEAR_MIN_OPTIONS.map((y) => ({ id: String(y), label: `${y}+` })),
@@ -272,8 +296,14 @@ function VehiclesSection() {
   const header = (
     <View style={styles.controls}>
       <View style={[styles.chipRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <FilterChip icon="car-sport-outline" active={filters.make != null} label={filters.make ? (VEHICLE_MAKES.find((m) => m.id === filters.make)?.name[lang] ?? t('attr_vehicle_make')) : t('attr_vehicle_make')} onPress={() => setPicker('make')} />
+        <FilterChip icon="car-sport-outline" active={filters.make != null} label={filters.make ? (getVehicleMake(filters.make)?.name[lang] ?? t('attr_vehicle_make')) : t('attr_vehicle_make')} onPress={() => setPicker('make')} />
+        {filters.make != null && models.length > 0 && (
+          <FilterChip icon="ribbon-outline" active={filters.model != null} label={selectedModelLabel ?? t('attr_vehicle_model')} onPress={() => setPicker('model')} />
+        )}
         <FilterChip icon="calendar-outline" active={filters.yearMin != null} label={filters.yearMin != null ? `${filters.yearMin}+` : t('attr_vehicle_year')} onPress={() => setPicker('year')} />
+        {trimsInData.length > 0 && (
+          <FilterChip icon="options-outline" active={filters.trim != null} label={filters.trim ?? t('attr_vehicle_trim')} onPress={() => setPicker('trim')} />
+        )}
         <FilterChip icon="speedometer-outline" active={filters.mileageMax != null} label={filters.mileageMax != null ? t('filter_maxKm', { count: groupThousands(filters.mileageMax) }) : t('attr_vehicle_mileage')} onPress={() => setPicker('mileage')} />
         <FilterChip icon="cog-outline" active={filters.transmission != null} label={filters.transmission ? t(TRANSMISSION_LABEL[filters.transmission]) : t('attr_vehicle_transmission')} onPress={() => setPicker('transmission')} />
         <FilterChip icon="pricetag-outline" active={priceIdx != null} label={priceIdx != null ? priceBracketLabel(CAR_PRICE_BRACKETS[priceIdx], t) : t('filter_price')} onPress={() => setPicker('price')} />
@@ -292,7 +322,9 @@ function VehiclesSection() {
       <Stack.Screen options={{ title: t('section_cars_title'), headerTitleStyle: { fontSize: 18, fontWeight: '800' } }} />
       <SectionList results={results} isLoading={isLoading} error={error} refetch={refetch} emptyIcon="car-sport-outline" header={header} />
 
-      <PickerSheet visible={picker === 'make'} title={t('attr_vehicle_make')} options={makeOptions} selectedId={filters.make ?? null} onSelect={(id) => setFilters((f) => ({ ...f, make: id ?? undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'make'} title={t('attr_vehicle_make')} options={makeOptions} selectedId={filters.make ?? null} onSelect={(id) => setMake(id ?? undefined)} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'model'} title={t('attr_vehicle_model')} options={modelOptions} selectedId={filters.model ?? null} onSelect={(id) => setFilters((f) => ({ ...f, model: id ?? undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'trim'} title={t('attr_vehicle_trim')} options={trimOptions} selectedId={filters.trim ?? null} onSelect={(id) => setFilters((f) => ({ ...f, trim: id ?? undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'year'} title={t('attr_vehicle_year')} options={yearOptions} selectedId={filters.yearMin != null ? String(filters.yearMin) : null} onSelect={(id) => setFilters((f) => ({ ...f, yearMin: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'mileage'} title={t('attr_vehicle_mileage')} options={mileageOptions} selectedId={filters.mileageMax != null ? String(filters.mileageMax) : null} onSelect={(id) => setFilters((f) => ({ ...f, mileageMax: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'transmission'} title={t('attr_vehicle_transmission')} options={transmissionOptions} selectedId={filters.transmission ?? null} onSelect={(id) => setFilters((f) => ({ ...f, transmission: (id as Transmission | null) ?? undefined }))} onClose={() => setPicker(null)} />
