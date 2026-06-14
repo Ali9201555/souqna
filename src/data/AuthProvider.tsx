@@ -81,6 +81,10 @@ type AuthContextValue = {
    * The provider must be enabled in Supabase Auth + the redirect URL allowlisted.
    */
   signInWithOAuth: (provider: OAuthProvider) => Promise<AuthResult>;
+  /** A failed web OAuth redirect's error text (disabled provider / origin not allowlisted), surfaced so it isn't silent. */
+  oauthError: string | null;
+  /** Dismiss the surfaced OAuth error. */
+  clearOAuthError: () => void;
   /** Send a password-reset email. The link signs the user in for /reset-password. */
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   /** Set a new password for the signed-in (or recovery) session. */
@@ -121,6 +125,19 @@ function mapError(error: { message?: string; status?: number; code?: string } | 
   return 'unknown';
 }
 
+/**
+ * On web, an OAuth redirect that FAILED (provider not enabled, or the origin
+ * isn't in Supabase's Redirect-URL allowlist) comes back as `?error=…` / `#error=…`
+ * at page load — outside any awaited call — so it would otherwise vanish silently.
+ * Read it once at mount so the sign-in UI can show why nothing happened.
+ */
+function readOAuthErrorFromUrl(): string | null {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
+  const q = new URLSearchParams(window.location.search);
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error');
+}
+
 type ProfileRow = {
   id: string;
   name: string;
@@ -135,6 +152,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<AuthStatus>(isSupabaseConfigured ? 'loading' : 'guest');
   const [profile, setProfile] = useState<Profile | null>(null);
+  // Captured before supabase-js's URL detection runs (state initializer = first render).
+  const [oauthError, setOauthError] = useState<string | null>(() => readOAuthErrorFromUrl());
+
+  // Strip the error params from the address bar so a reload doesn't resurface them.
+  useEffect(() => {
+    if (Platform.OS === 'web' && oauthError && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    // Run once on mount; reading the initial oauthError is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const clearOAuthError = useCallback(() => setOauthError(null), []);
 
   // Restore the persisted session on launch, then track auth changes. The
   // onAuthStateChange callback is kept to setState ONLY — calling other
@@ -272,39 +301,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return error ? { ok: false, code: mapError(error) } : { ok: true };
       }
       // Native: open the provider in a system browser, then exchange the tokens
-      // the redirect hands back. redirectTo must be in Supabase's allowlist.
+      // the redirect hands back. redirectTo (Linking.createURL('/') → `souqna:///`
+      // in a dev/standalone build, `exp://…` in Expo Go) must be in Supabase's
+      // allowlist; deep-linking only resolves in a built binary, never Expo Go.
       const redirectTo = Linking.createURL('/');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo, skipBrowserRedirect: true },
-      });
-      if (error) return { ok: false, code: mapError(error) };
-      if (!data?.url) return { ok: false, code: 'unknown' };
-
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      if (result.type !== 'success') return { ok: false, code: 'cancelled' };
-
-      // The handshake returns either a PKCE `code` (default) or raw tokens.
-      const returned = result.url;
-      const fragment = returned.includes('#') ? returned.split('#')[1] : '';
-      const query = returned.includes('?') ? returned.split('?')[1].split('#')[0] : '';
-      const params = new URLSearchParams(fragment || query);
-      const code = params.get('code');
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-
-      if (code) {
-        const { error: xErr } = await supabase.auth.exchangeCodeForSession(code);
-        return xErr ? { ok: false, code: mapError(xErr) } : { ok: true };
-      }
-      if (accessToken && refreshToken) {
-        const { error: sErr } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+      // Pre-warm Android Custom Tabs so the auth tab opens instantly and the
+      // redirect back into the app isn't missed on a cold browser start.
+      if (Platform.OS === 'android') await WebBrowser.warmUpAsync().catch(() => undefined);
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo, skipBrowserRedirect: true },
         });
-        return sErr ? { ok: false, code: mapError(sErr) } : { ok: true };
+        if (error) return { ok: false, code: mapError(error) };
+        if (!data?.url) return { ok: false, code: 'unknown' };
+
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type !== 'success') return { ok: false, code: 'cancelled' };
+
+        // The handshake returns either a PKCE `code` or raw tokens (implicit).
+        const returned = result.url;
+        const fragment = returned.includes('#') ? returned.split('#')[1] : '';
+        const query = returned.includes('?') ? returned.split('?')[1].split('#')[0] : '';
+        const params = new URLSearchParams(fragment || query);
+        const code = params.get('code');
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (code) {
+          const { error: xErr } = await supabase.auth.exchangeCodeForSession(code);
+          return xErr ? { ok: false, code: mapError(xErr) } : { ok: true };
+        }
+        if (accessToken && refreshToken) {
+          const { error: sErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          return sErr ? { ok: false, code: mapError(sErr) } : { ok: true };
+        }
+        return { ok: false, code: 'unknown' };
+      } finally {
+        if (Platform.OS === 'android') WebBrowser.coolDownAsync().catch(() => undefined);
       }
-      return { ok: false, code: 'unknown' };
     } catch {
       return { ok: false, code: 'network' };
     }
@@ -361,12 +399,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUpWithPassword,
       signInWithPassword,
       signInWithOAuth,
+      oauthError,
+      clearOAuthError,
       requestPasswordReset,
       updatePassword,
       setDisplayName,
       signOut,
     }),
-    [session, profile, status, signInWithPhone, verifyOtp, signUpWithPassword, signInWithPassword, signInWithOAuth, requestPasswordReset, updatePassword, setDisplayName, signOut],
+    [session, profile, status, oauthError, clearOAuthError, signInWithPhone, verifyOtp, signUpWithPassword, signInWithPassword, signInWithOAuth, requestPasswordReset, updatePassword, setDisplayName, signOut],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;
