@@ -24,6 +24,12 @@ export const TRANSMISSION_LABEL: Record<Transmission, TKey> = {
   manual: 'attr_trans_manual',
 };
 
+/** Compact transmission for card badges where the full word is too wide. */
+export const TRANSMISSION_SHORT: Record<Transmission, TKey> = {
+  automatic: 'attr_trans_automatic_short',
+  manual: 'attr_trans_manual_short',
+};
+
 export const DEAL_TYPE_LABEL: Record<DealType, TKey> = {
   sale: 'attr_deal_sale',
   rent: 'attr_deal_rent',
