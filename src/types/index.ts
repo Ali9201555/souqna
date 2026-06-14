@@ -50,9 +50,32 @@ export interface VehicleAttributes {
 }
 
 export type DealType = 'sale' | 'rent';
-export type PropertyType = 'house' | 'apartment' | 'land' | 'commercial' | 'farm';
+export type PropertyType = 'house' | 'apartment' | 'land' | 'commercial' | 'villa' | 'farm';
+export type Currency = 'IQD' | 'USD';
+export type WaterSource = 'municipal' | 'well' | 'tanker' | 'mixed';
+export type InternetKind = 'fiber' | 'wireless' | 'mobile' | 'none';
 
-/** Structured facts for the Real-estate section. `rent` prices are monthly IQD. */
+/**
+ * Iraq-specific utilities — the headline differentiator. Power is the first
+ * thing every Iraqi renter/buyer asks about: national-grid hours vs the
+ * neighborhood generator sold by amps (أمبير).
+ */
+export interface PropertyUtilities {
+  /** National-grid electricity hours per day (0–24). */
+  gridHoursPerDay?: number;
+  /** Neighborhood generator amps available (أمبير). */
+  generatorAmps?: number;
+  generatorIncluded?: boolean;
+  water?: WaterSource;
+  waterFiltered?: boolean;
+  internet?: InternetKind;
+  securityGuard?: boolean;
+  cctv?: boolean;
+  gated?: boolean;
+  parkingSpaces?: number;
+}
+
+/** Structured facts for the Real-estate section. `rent` prices are monthly. */
 export interface PropertyAttributes {
   kind: 'property';
   dealType: DealType;
@@ -62,6 +85,17 @@ export interface PropertyAttributes {
   /** Plot/built area in square meters. */
   areaM2?: number;
   furnished?: boolean;
+  // ── v2 additions (all optional → existing listings stay valid) ──
+  /** The currency the owner quotes in. `priceIqd` stays the canonical spine. */
+  currency?: Currency;
+  /** USD figure when quoted in dollars (common for sales); priceIqd is the converted spine. */
+  priceUsd?: number;
+  /** District/neighborhood id from locations.ts. */
+  districtId?: string;
+  yearBuilt?: number;
+  /** Amenity ids from AMENITIES. */
+  amenities?: string[];
+  utilities?: PropertyUtilities;
 }
 
 export type Fulfillment = 'pickup' | 'delivery' | 'both';

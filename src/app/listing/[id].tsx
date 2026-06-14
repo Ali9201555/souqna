@@ -29,6 +29,7 @@ import Animated, {
 import { Avatar } from '@/components/avatar';
 import { IMAGE_PLACEHOLDER } from '@/components/listing-card';
 import { PressableScale } from '@/components/pressable-scale';
+import { AmenityChips, PriceTag, UtilityBadges } from '@/components/property-bits';
 import { ReportListingSheet } from '@/components/report-listing-sheet';
 import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { Skeleton } from '@/components/skeleton';
@@ -265,9 +266,13 @@ export default function ListingDetailScreen() {
             scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
           ]}>
           <View style={[styles.priceRow, { flexDirection: rowDir }]}>
-            <ThemedText themeColor="price" style={styles.price}>
-              {priceText}
-            </ThemedText>
+            {listing.attributes?.kind === 'property' ? (
+              <PriceTag priceIqd={listing.priceIqd} currency={listing.attributes.currency} priceUsd={listing.attributes.priceUsd} />
+            ) : (
+              <ThemedText themeColor="price" style={styles.price}>
+                {priceText}
+              </ThemedText>
+            )}
             {listing.negotiable && (
               <View style={[styles.chip, { backgroundColor: theme.tintSoft }]}>
                 <ThemedText type="small" themeColor="tint" style={styles.chipText}>
@@ -285,6 +290,18 @@ export default function ListingDetailScreen() {
               {gov?.name[lang]} · {formatRelativeTime(listing.createdAt, t)}
             </ThemedText>
           </View>
+
+          {listing.attributes?.kind === 'property' && listing.attributes.utilities && (
+            <Animated.View entering={enterBlock(1)}>
+              <UtilityBadges utilities={listing.attributes.utilities} />
+            </Animated.View>
+          )}
+          {listing.attributes?.kind === 'property' && listing.attributes.amenities && listing.attributes.amenities.length > 0 && (
+            <Animated.View entering={enterBlock(1)} style={styles.amenitiesBlock}>
+              <ThemedText type="smallBold" style={{ textAlign: align }}>{t('detail_amenities')}</ThemedText>
+              <AmenityChips ids={listing.attributes.amenities} />
+            </Animated.View>
+          )}
 
           {seller && (
             <Animated.View
@@ -408,6 +425,9 @@ export default function ListingDetailScreen() {
                   )}
                   {listing.attributes.furnished != null && (
                     <DetailRow icon="cube-outline" label={t('attr_furnished')} value={listing.attributes.furnished ? t('common_yes') : t('common_no')} />
+                  )}
+                  {listing.attributes.yearBuilt != null && (
+                    <DetailRow icon="calendar-outline" label={t('attr_yearBuilt')} value={String(listing.attributes.yearBuilt)} />
                   )}
                 </>
               )}
@@ -662,6 +682,7 @@ const styles = StyleSheet.create({
   },
   priceRow: { alignItems: 'center', gap: Spacing.two },
   price: { fontSize: 26, fontWeight: '800' },
+  amenitiesBlock: { gap: Spacing.two },
   chip: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.half, borderRadius: Radius.pill },
   chipText: { fontWeight: '700' },
   title: { fontSize: 20, fontWeight: '700', lineHeight: 28 },
