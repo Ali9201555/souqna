@@ -1,8 +1,17 @@
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
+
+// Lets a native OAuth browser tab hand control back to the app on redirect.
+WebBrowser.maybeCompleteAuthSession();
+
+/** Social identity providers offered on the welcome screen. */
+export type OAuthProvider = 'google' | 'apple' | 'facebook';
 
 /**
  * Dev-only escape hatch: hosted Supabase can't test phone OTP without Twilio,
@@ -26,6 +35,7 @@ export type AuthErrorCode =
   | 'expired'
   | 'network'
   | 'not_configured'
+  | 'cancelled'
   | 'unknown';
 
 export type AuthResult = { ok: true } | { ok: false; code: AuthErrorCode };
@@ -64,6 +74,13 @@ type AuthContextValue = {
   signUpWithPassword: (input: { name: string; email: string; password: string }) => Promise<SignUpResult>;
   /** Email + password sign-in. Never throws. */
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  /**
+   * OAuth sign-in (Google/Apple/Facebook). Web does a full-page redirect; native
+   * opens an in-app browser and completes the PKCE/implicit handshake by hand.
+   * Returns `not_configured` in demo mode and `cancelled` if the user backs out.
+   * The provider must be enabled in Supabase Auth + the redirect URL allowlisted.
+   */
+  signInWithOAuth: (provider: OAuthProvider) => Promise<AuthResult>;
   /** Send a password-reset email. The link signs the user in for /reset-password. */
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   /** Set a new password for the signed-in (or recovery) session. */
@@ -244,6 +261,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? { ok: false, code: mapError(error) } : { ok: true };
   }, []);
 
+  const signInWithOAuth = useCallback(async (provider: OAuthProvider): Promise<AuthResult> => {
+    if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
+    try {
+      // Web: let supabase-js own the full-page redirect; the session is picked up
+      // on return via detectSessionInUrl. (No code runs after this resolves.)
+      if (Platform.OS === 'web') {
+        const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+        const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+        return error ? { ok: false, code: mapError(error) } : { ok: true };
+      }
+      // Native: open the provider in a system browser, then exchange the tokens
+      // the redirect hands back. redirectTo must be in Supabase's allowlist.
+      const redirectTo = Linking.createURL('/');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) return { ok: false, code: mapError(error) };
+      if (!data?.url) return { ok: false, code: 'unknown' };
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success') return { ok: false, code: 'cancelled' };
+
+      // The handshake returns either a PKCE `code` (default) or raw tokens.
+      const returned = result.url;
+      const fragment = returned.includes('#') ? returned.split('#')[1] : '';
+      const query = returned.includes('?') ? returned.split('?')[1].split('#')[0] : '';
+      const params = new URLSearchParams(fragment || query);
+      const code = params.get('code');
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (code) {
+        const { error: xErr } = await supabase.auth.exchangeCodeForSession(code);
+        return xErr ? { ok: false, code: mapError(xErr) } : { ok: true };
+      }
+      if (accessToken && refreshToken) {
+        const { error: sErr } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        return sErr ? { ok: false, code: mapError(sErr) } : { ok: true };
+      }
+      return { ok: false, code: 'unknown' };
+    } catch {
+      return { ok: false, code: 'network' };
+    }
+  }, []);
+
   const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
     if (!isSupabaseConfigured) return { ok: false, code: 'not_configured' };
     const trimmedEmail = email.trim();
@@ -294,12 +360,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyOtp,
       signUpWithPassword,
       signInWithPassword,
+      signInWithOAuth,
       requestPasswordReset,
       updatePassword,
       setDisplayName,
       signOut,
     }),
-    [session, profile, status, signInWithPhone, verifyOtp, signUpWithPassword, signInWithPassword, requestPasswordReset, updatePassword, setDisplayName, signOut],
+    [session, profile, status, signInWithPhone, verifyOtp, signUpWithPassword, signInWithPassword, signInWithOAuth, requestPasswordReset, updatePassword, setDisplayName, signOut],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

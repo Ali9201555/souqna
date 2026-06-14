@@ -27,6 +27,7 @@ const ERR_KEY: Record<AuthErrorCode, TKey> = {
   expired: 'auth_err_expired',
   network: 'auth_err_network',
   not_configured: 'auth_err_unknown',
+  cancelled: 'auth_err_unknown',
   unknown: 'auth_err_unknown',
 };
 
