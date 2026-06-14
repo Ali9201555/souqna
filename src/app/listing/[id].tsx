@@ -7,6 +7,7 @@ import {
   Linking,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
   type NativeScrollEvent,
@@ -64,7 +65,7 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getListing, getSeller, isFavorite, toggleFavorite, submitReport, isLoading } = useListings();
   const { user, isAuthenticated } = useAuth();
-  const { openThread } = useChat();
+  const { openThread, sendMessage } = useChat();
   const myId = user?.id ?? DEMO_USER_ID;
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
@@ -76,6 +77,9 @@ export default function ListingDetailScreen() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  // Inline "send seller a message" box — prefilled with the availability ask (FB-style).
+  const [msgDraft, setMsgDraft] = useState(() => t('chat_quick_available'));
+  const [sendingInline, setSendingInline] = useState(false);
 
   const heroHeight = (width * 3) / 4;
 
@@ -154,6 +158,24 @@ export default function ListingDetailScreen() {
     const threadId = await openThread(listing.id, listing.sellerId);
     if (threadId) {
       router.push({ pathname: '/chat/[id]', params: { id: threadId, listingId: listing.id, sellerId: listing.sellerId } });
+    }
+  };
+  // Inline composer: send the typed message, then open the conversation to continue.
+  const sendInline = async () => {
+    const body = msgDraft.trim();
+    if (!body || sendingInline) return;
+    if (isSupabaseConfigured && !isAuthenticated) {
+      router.push('/auth');
+      return;
+    }
+    setSendingInline(true);
+    try {
+      const threadId = await openThread(listing.id, listing.sellerId);
+      if (!threadId) return;
+      await sendMessage(threadId, body);
+      router.push({ pathname: '/chat/[id]', params: { id: threadId, listingId: listing.id, sellerId: listing.sellerId } });
+    } finally {
+      setSendingInline(false);
     }
   };
   const report = async (reason: Parameters<typeof submitReport>[0]['reason'], details: string) => {
@@ -292,7 +314,41 @@ export default function ListingDetailScreen() {
             <ThemedText style={[styles.description, { textAlign: align }]}>{listing.description}</ThemedText>
           </Section>
 
-          <Section title={t('detail_details')} align={align} order={3}>
+          {listing.sellerId !== myId && (
+            <Animated.View
+              entering={enterBlock(3)}
+              style={[
+                styles.msgCard,
+                { backgroundColor: theme.surface, boxShadow: Shadow.card },
+                scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+              ]}>
+              <View style={[styles.msgHeader, { flexDirection: rowDir }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.tint} />
+                <ThemedText style={[styles.msgTitle, { textAlign: align }]}>{t('detail_message_seller')}</ThemedText>
+              </View>
+              <TextInput
+                value={msgDraft}
+                onChangeText={setMsgDraft}
+                placeholder={t('chat_quick_available')}
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                style={[styles.msgInput, { color: theme.text, backgroundColor: theme.backgroundElement, textAlign: align }]}
+              />
+              <PressableScale
+                haptic
+                scaleTo={0.98}
+                disabled={!msgDraft.trim() || sendingInline}
+                accessibilityRole="button"
+                accessibilityLabel={t('chat_send')}
+                onPress={() => void sendInline()}
+                style={[styles.msgSend, { backgroundColor: theme.tint, opacity: !msgDraft.trim() || sendingInline ? 0.6 : 1, flexDirection: rowDir }]}>
+                <Ionicons name={isRTL ? 'arrow-back' : 'arrow-forward'} size={18} color={theme.onTint} />
+                <ThemedText style={{ color: theme.onTint, fontWeight: '800' }}>{t('chat_send')}</ThemedText>
+              </PressableScale>
+            </Animated.View>
+          )}
+
+          <Section title={t('detail_details')} align={align} order={4}>
             <View style={[styles.chipWrap, { flexDirection: rowDir }]}>
               <DetailRow icon="grid-outline" label={t('detail_category')} value={category?.name[lang] ?? '—'} />
               <DetailRow icon="location-outline" label={t('detail_location')} value={gov?.name[lang] ?? '—'} />
@@ -632,6 +688,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   actionText: { fontWeight: '700' },
+  msgCard: { borderRadius: Radius.xl, padding: Spacing.three, gap: Spacing.two },
+  msgHeader: { alignItems: 'center', gap: Spacing.two },
+  msgTitle: { flex: 1, fontSize: 15, fontWeight: '800' },
+  msgInput: { minHeight: 48, borderRadius: Radius.lg, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 2, fontSize: 15 },
+  msgSend: { alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three, borderRadius: Radius.pill },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.five },
   notFoundText: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
   backBtn: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, borderRadius: Radius.pill },
