@@ -34,10 +34,14 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Motion, Radius, Shadow, Spacing } from '@/constants/theme';
+import { useAuth } from '@/data/AuthProvider';
 import { getCategory } from '@/data/categories';
+import { useChat } from '@/data/ChatProvider';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
+import { DEMO_USER_ID } from '@/data/seed';
 import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
@@ -59,6 +63,9 @@ const enterBlock = (order: number) => FadeInDown.duration(360).delay(order * ENT
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getListing, getSeller, isFavorite, toggleFavorite, submitReport, isLoading } = useListings();
+  const { user, isAuthenticated } = useAuth();
+  const { openThread } = useChat();
+  const myId = user?.id ?? DEMO_USER_ID;
   const { t, lang, isRTL } = useI18n();
   const theme = useTheme();
   const scheme = useColorScheme();
@@ -138,8 +145,16 @@ export default function ListingDetailScreen() {
   const call = () => {
     if (seller?.phone) Linking.openURL(`tel:${seller.phone}`);
   };
-  const message = () => {
-    if (seller?.phone) Linking.openURL(`https://wa.me/${seller.phone.replace(/[^\d]/g, '')}`);
+  const messageSeller = async () => {
+    // Configured backend → must be signed in to start a conversation.
+    if (isSupabaseConfigured && !isAuthenticated) {
+      router.push('/auth');
+      return;
+    }
+    const threadId = await openThread(listing.id, listing.sellerId);
+    if (threadId) {
+      router.push({ pathname: '/chat/[id]', params: { id: threadId, listingId: listing.id, sellerId: listing.sellerId } });
+    }
   };
   const report = async (reason: Parameters<typeof submitReport>[0]['reason'], details: string) => {
     setIsSubmittingReport(true);
@@ -380,9 +395,9 @@ export default function ListingDetailScreen() {
         onClose={() => setIsReportOpen(false)}
       />
 
-      {/* Remote sellers expose no phone (PII stays owner-only) — contact moves
-          to in-app chat (Phase 3), so the bar hides rather than no-op. */}
-      {!!seller?.phone && (
+      {/* In-app chat is the primary contact; calling stays as a shortcut only
+          for sellers who expose a phone (seed/demo). Hidden on your own listing. */}
+      {listing.sellerId !== myId && (
         <Animated.View
           entering={SlideInDown.springify()
             .damping(Motion.spring.damping)
@@ -399,34 +414,36 @@ export default function ListingDetailScreen() {
             scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
           ]}>
           <PressableScale
-            scaleTo={0.97}
-            accessibilityRole="button"
-            accessibilityLabel={t('detail_message')}
-            onPress={message}
-            style={[styles.actionBtn, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
-            <Ionicons name="logo-whatsapp" size={20} color={theme.tint} />
-            <ThemedText themeColor="tint" style={styles.actionText}>
-              {t('detail_message')}
-            </ThemedText>
-          </PressableScale>
-          <PressableScale
             haptic
             scaleTo={0.97}
             accessibilityRole="button"
-            accessibilityLabel={t('detail_call')}
-            onPress={call}
+            accessibilityLabel={t('detail_message_seller')}
+            onPress={() => void messageSeller()}
             style={styles.actionPrimary}>
             <LinearGradient
               colors={[theme.tint, theme.accent]}
               start={isRTL ? { x: 1, y: 0 } : { x: 0, y: 0 }}
               end={isRTL ? { x: 0, y: 1 } : { x: 1, y: 1 }}
               style={[styles.actionPrimaryInner, { flexDirection: rowDir }]}>
-              <Ionicons name="call" size={20} color={theme.onTint} />
+              <Ionicons name="chatbubble-ellipses" size={20} color={theme.onTint} />
               <ThemedText style={[styles.actionText, { color: theme.onTint }]}>
-                {t('detail_call')}
+                {t('detail_message_seller')}
               </ThemedText>
             </LinearGradient>
           </PressableScale>
+          {!!seller?.phone && (
+            <PressableScale
+              scaleTo={0.97}
+              accessibilityRole="button"
+              accessibilityLabel={t('detail_call')}
+              onPress={call}
+              style={[styles.actionBtn, { backgroundColor: theme.tintSoft, flexDirection: rowDir }]}>
+              <Ionicons name="call" size={20} color={theme.tint} />
+              <ThemedText themeColor="tint" style={styles.actionText}>
+                {t('detail_call')}
+              </ThemedText>
+            </PressableScale>
+          )}
         </Animated.View>
       )}
     </ThemedView>

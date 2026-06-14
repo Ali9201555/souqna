@@ -99,8 +99,19 @@ export interface ListingReport {
 export interface ChatThread {
   id: string;
   listingId: string;
+  /** The OTHER participant's profile id (seller when I'm the buyer, and vice-versa). */
   withSellerId: string;
   lastMessage: string;
+  /** Epoch milliseconds. */
   lastAt: number;
   unread: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  senderId: string;
+  body: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
 }
