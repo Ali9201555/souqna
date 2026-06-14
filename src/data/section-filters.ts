@@ -1,4 +1,4 @@
-import type { DealType, Listing, PropertyType, Transmission } from '@/types';
+import type { DealType, FuelType, Listing, ListingCondition, PropertyType, Transmission } from '@/types';
 
 /**
  * Section filter state + pure predicates. These predicates are the contract
@@ -10,6 +10,8 @@ import type { DealType, Listing, PropertyType, Transmission } from '@/types';
 
 export type PriceRange = { min?: number; max?: number };
 
+export type SortMode = 'newest' | 'price_low' | 'price_high' | 'year_new' | 'mileage_low';
+
 export type VehicleFilters = {
   make?: string;
   /** Model id; only meaningful alongside a make. */
@@ -17,8 +19,13 @@ export type VehicleFilters = {
   /** Free-text trim, matched case-insensitively as a substring. */
   trim?: string;
   yearMin?: number;
+  yearMax?: number;
   mileageMax?: number;
   transmission?: Transmission;
+  fuel?: FuelType;
+  /** Listing-level (not attribute) facets, filtered here for a single sheet. */
+  condition?: ListingCondition;
+  governorateId?: string;
   price?: PriceRange;
 };
 
@@ -45,6 +52,8 @@ function matchesPrice(priceIqd: number, range: PriceRange | undefined): boolean 
 
 export function matchesVehicleFilters(listing: Listing, f: VehicleFilters): boolean {
   if (!matchesPrice(listing.priceIqd, f.price)) return false;
+  if (f.condition != null && listing.condition !== f.condition) return false;
+  if (f.governorateId != null && listing.governorateId !== f.governorateId) return false;
   const a = listing.attributes;
   const v = a?.kind === 'vehicle' ? a : undefined;
   if (f.make != null && v?.make !== f.make) return false;
@@ -54,8 +63,10 @@ export function matchesVehicleFilters(listing: Listing, f: VehicleFilters): bool
     if (!(v?.trim ?? '').toLowerCase().includes(needle)) return false;
   }
   if (f.yearMin != null && (v?.year == null || v.year < f.yearMin)) return false;
+  if (f.yearMax != null && (v?.year == null || v.year > f.yearMax)) return false;
   if (f.mileageMax != null && (v?.mileageKm == null || v.mileageKm > f.mileageMax)) return false;
   if (f.transmission != null && v?.transmission !== f.transmission) return false;
+  if (f.fuel != null && v?.fuel !== f.fuel) return false;
   return true;
 }
 
@@ -68,4 +79,46 @@ export function matchesPropertyFilters(listing: Listing, f: PropertyFilters): bo
   if (f.bedroomsMin != null && (p?.bedrooms == null || p.bedrooms < f.bedroomsMin)) return false;
   if (f.areaM2Min != null && (p?.areaM2 == null || p.areaM2 < f.areaM2Min)) return false;
   return true;
+}
+
+/** Count the set facets on a VehicleFilters (drives the "Filters (N)" badge). */
+export function countVehicleFilters(f: VehicleFilters): number {
+  let n = 0;
+  if (f.make != null) n++;
+  if (f.model != null) n++;
+  if (f.trim != null && f.trim.trim() !== '') n++;
+  if (f.yearMin != null || f.yearMax != null) n++;
+  if (f.mileageMax != null) n++;
+  if (f.transmission != null) n++;
+  if (f.fuel != null) n++;
+  if (f.condition != null) n++;
+  if (f.governorateId != null) n++;
+  if (f.price?.min != null || f.price?.max != null) n++;
+  return n;
+}
+
+const vYear = (l: Listing) => (l.attributes?.kind === 'vehicle' ? l.attributes.year : undefined);
+const vMileage = (l: Listing) => (l.attributes?.kind === 'vehicle' ? l.attributes.mileageKm : undefined);
+
+/** Stable sort across the shared modes; missing vehicle facts sort to the end. */
+export function sortListings(items: Listing[], mode: SortMode): Listing[] {
+  return [...items].sort((a, b) => {
+    if (mode === 'price_low') {
+      const ap = a.priceIqd > 0 ? a.priceIqd : Number.POSITIVE_INFINITY;
+      const bp = b.priceIqd > 0 ? b.priceIqd : Number.POSITIVE_INFINITY;
+      return ap - bp;
+    }
+    if (mode === 'price_high') {
+      const ap = a.priceIqd > 0 ? a.priceIqd : -1;
+      const bp = b.priceIqd > 0 ? b.priceIqd : -1;
+      return bp - ap;
+    }
+    if (mode === 'year_new') {
+      return (vYear(b) ?? -Infinity) - (vYear(a) ?? -Infinity);
+    }
+    if (mode === 'mileage_low') {
+      return (vMileage(a) ?? Infinity) - (vMileage(b) ?? Infinity);
+    }
+    return b.createdAt - a.createdAt;
+  });
 }

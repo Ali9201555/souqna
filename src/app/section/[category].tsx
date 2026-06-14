@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -13,6 +13,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import { CarFilterSheet } from '@/components/car-filter-sheet';
 import { ListState } from '@/components/list-state';
 import { ListingCard } from '@/components/listing-card';
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
@@ -21,37 +22,33 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Motion, Radius, Shadow, Spacing } from '@/constants/theme';
+import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
 import {
+  countVehicleFilters,
   matchesPropertyFilters,
   matchesVehicleFilters,
+  sortListings,
   type PriceRange,
   type PropertyFilters,
+  type SortMode,
   type VehicleFilters,
 } from '@/data/section-filters';
 import { hasSection } from '@/data/sections';
-import { VEHICLE_MAKES, getModelsForMake, getVehicleMake, getVehicleModel, modelLabel } from '@/data/vehicle-makes';
+import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
-import { DEAL_TYPE_SHORT, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
+import { DEAL_TYPE_SHORT, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
 import { groupThousands } from '@/lib/format';
-import type { DealType, Listing, PropertyType, Transmission } from '@/types';
+import type { TKey } from '@/i18n/translations';
+import type { DealType, Language, Listing, PropertyType } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
-type SortMode = 'newest' | 'price_low' | 'price_high';
 
-const YEAR_MIN_OPTIONS = [2022, 2020, 2018, 2015, 2010];
-const MILEAGE_MAX_OPTIONS = [50_000, 100_000, 150_000];
 const BEDROOMS_MIN_OPTIONS = [1, 2, 3, 4, 5];
 const AREA_MIN_OPTIONS = [50, 100, 150, 200, 300];
 
-const CAR_PRICE_BRACKETS: PriceRange[] = [
-  { max: 10_000_000 },
-  { min: 10_000_000, max: 20_000_000 },
-  { min: 20_000_000, max: 40_000_000 },
-  { min: 40_000_000 },
-];
 const RENT_PRICE_BRACKETS: PriceRange[] = [
   { max: 500_000 },
   { min: 500_000, max: 1_000_000 },
@@ -65,20 +62,42 @@ const SALE_PRICE_BRACKETS: PriceRange[] = [
   { min: 600_000_000 },
 ];
 
-function sortListings(items: Listing[], mode: SortMode): Listing[] {
-  return [...items].sort((a, b) => {
-    if (mode === 'price_low') {
-      const ap = a.priceIqd > 0 ? a.priceIqd : Number.POSITIVE_INFINITY;
-      const bp = b.priceIqd > 0 ? b.priceIqd : Number.POSITIVE_INFINITY;
-      return ap - bp;
-    }
-    if (mode === 'price_high') {
-      const ap = a.priceIqd > 0 ? a.priceIqd : -1;
-      const bp = b.priceIqd > 0 ? b.priceIqd : -1;
-      return bp - ap;
-    }
-    return b.createdAt - a.createdAt;
-  });
+const VEHICLE_SORTS: SortMode[] = ['newest', 'price_low', 'price_high', 'year_new', 'mileage_low'];
+const SORT_LABEL: Record<SortMode, TKey> = {
+  newest: 'search_sort_newest',
+  price_low: 'search_sort_priceLow',
+  price_high: 'search_sort_priceHigh',
+  year_new: 'sort_year_new',
+  mileage_low: 'sort_mileage_low',
+};
+
+type Translate = (key: TKey, vars?: Record<string, string | number>) => string;
+type Pill = { key: string; label: string; clear: Partial<VehicleFilters> };
+
+/** Applied vehicle filters → removable pills, in reading order. */
+function vehiclePills(f: VehicleFilters, t: Translate, lang: Language): Pill[] {
+  const pills: Pill[] = [];
+  if (f.make != null) {
+    pills.push({ key: 'make', label: getVehicleMake(f.make)?.name[lang] ?? f.make, clear: { make: undefined, model: undefined } });
+  }
+  if (f.make != null && f.model != null) {
+    pills.push({ key: 'model', label: getVehicleModel(f.make, f.model)?.[lang === 'en' ? 'en' : 'ar'] ?? f.model, clear: { model: undefined } });
+  }
+  if (f.yearMin != null || f.yearMax != null) {
+    const label = f.yearMin != null && f.yearMax != null ? `${f.yearMin}–${f.yearMax}` : f.yearMin != null ? `${f.yearMin}+` : `≤${f.yearMax}`;
+    pills.push({ key: 'year', label, clear: { yearMin: undefined, yearMax: undefined } });
+  }
+  if (f.price?.min != null || f.price?.max != null) {
+    const label = f.price.min != null && f.price.max != null ? `${groupThousands(f.price.min)}–${groupThousands(f.price.max)}` : f.price.max != null ? t('filter_upTo', { amount: groupThousands(f.price.max) }) : `${groupThousands(f.price.min ?? 0)}+`;
+    pills.push({ key: 'price', label, clear: { price: undefined } });
+  }
+  if (f.mileageMax != null) pills.push({ key: 'mileage', label: t('filter_maxKm', { count: groupThousands(f.mileageMax) }), clear: { mileageMax: undefined } });
+  if (f.trim != null && f.trim.trim() !== '') pills.push({ key: 'trim', label: f.trim, clear: { trim: undefined } });
+  if (f.transmission != null) pills.push({ key: 'transmission', label: t(TRANSMISSION_LABEL[f.transmission]), clear: { transmission: undefined } });
+  if (f.fuel != null) pills.push({ key: 'fuel', label: t(FUEL_LABEL[f.fuel]), clear: { fuel: undefined } });
+  if (f.condition != null) pills.push({ key: 'condition', label: t(f.condition === 'new' ? 'cond_new' : 'cond_used'), clear: { condition: undefined } });
+  if (f.governorateId != null) pills.push({ key: 'gov', label: getGovernorate(f.governorateId)?.name[lang] ?? f.governorateId, clear: { governorateId: undefined } });
+  return pills;
 }
 
 function FilterChip({ icon, label, active, onPress }: { icon: IoniconName; label: string; active?: boolean; onPress: () => void }) {
@@ -230,85 +249,46 @@ function VehiclesSection() {
   const { t, lang, isRTL } = useI18n();
   const { base, isLoading, error, refetch } = useSectionBase('vehicles');
 
+  const theme = useTheme();
   const [filters, setFilters] = useState<VehicleFilters>({});
-  const [priceIdx, setPriceIdx] = useState<number | null>(null);
   const [sort, setSort] = useState<SortMode>('newest');
-  const [picker, setPicker] = useState<null | 'make' | 'model' | 'trim' | 'year' | 'mileage' | 'transmission' | 'price' | 'sort'>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSort, setShowSort] = useState(false);
 
-  const effective: VehicleFilters = useMemo(
-    () => ({ ...filters, price: priceIdx != null ? CAR_PRICE_BRACKETS[priceIdx] : undefined }),
-    [filters, priceIdx],
-  );
-  const results = useMemo(() => sortListings(base.filter((l) => matchesVehicleFilters(l, effective)), sort), [base, effective, sort]);
-
-  // Choosing a make invalidates the previously-selected model.
-  const setMake = (make: string | undefined) => setFilters((f) => ({ ...f, make, model: undefined }));
-
-  // Trims actually present in the listings, so the picker never offers a dead end.
-  const trimsInData = useMemo(() => {
-    const set = new Set<string>();
-    for (const l of base) {
-      const a = l.attributes;
-      if (a?.kind === 'vehicle' && a.trim?.trim()) set.add(a.trim.trim());
-    }
-    return [...set].sort((x, y) => x.localeCompare(y));
-  }, [base]);
-
-  const models = getModelsForMake(filters.make);
-  const makeOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...VEHICLE_MAKES.map((m) => ({ id: m.id, label: m.name[lang] })),
-  ];
-  const modelOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...models.map((m) => ({ id: m.id, label: modelLabel(m, lang) })),
-  ];
-  const trimOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...trimsInData.map((tr) => ({ id: tr, label: tr })),
-  ];
-  const selectedModelLabel =
-    filters.make && filters.model ? (getVehicleModel(filters.make, filters.model)?.en ?? filters.model) : null;
-  const yearOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...YEAR_MIN_OPTIONS.map((y) => ({ id: String(y), label: `${y}+` })),
-  ];
-  const mileageOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...MILEAGE_MAX_OPTIONS.map((m) => ({ id: String(m), label: t('filter_maxKm', { count: groupThousands(m) }) })),
-  ];
-  const transmissionOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    { id: 'automatic', label: t('attr_trans_automatic') },
-    { id: 'manual', label: t('attr_trans_manual') },
-  ];
-  const priceOptions: PickerOption[] = [
-    { id: null, label: t('search_all') },
-    ...CAR_PRICE_BRACKETS.map((r, i) => ({ id: String(i), label: priceBracketLabel(r, t) })),
-  ];
-  const sortLabels: Record<SortMode, string> = {
-    newest: t('search_sort_newest'),
-    price_low: t('search_sort_priceLow'),
-    price_high: t('search_sort_priceHigh'),
-  };
-  const sortOptions: PickerOption[] = (['newest', 'price_low', 'price_high'] as SortMode[]).map((id) => ({ id, label: sortLabels[id] }));
+  const results = useMemo(() => sortListings(base.filter((l) => matchesVehicleFilters(l, filters)), sort), [base, filters, sort]);
+  const activeCount = countVehicleFilters(filters);
+  const pills = useMemo(() => vehiclePills(filters, t, lang), [filters, t, lang]);
+  const sortOptions: PickerOption[] = VEHICLE_SORTS.map((id) => ({ id, label: t(SORT_LABEL[id]) }));
 
   const header = (
     <View style={styles.controls}>
-      <View style={[styles.chipRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <FilterChip icon="car-sport-outline" active={filters.make != null} label={filters.make ? (getVehicleMake(filters.make)?.name[lang] ?? t('attr_vehicle_make')) : t('attr_vehicle_make')} onPress={() => setPicker('make')} />
-        {filters.make != null && models.length > 0 && (
-          <FilterChip icon="ribbon-outline" active={filters.model != null} label={selectedModelLabel ?? t('attr_vehicle_model')} onPress={() => setPicker('model')} />
-        )}
-        <FilterChip icon="calendar-outline" active={filters.yearMin != null} label={filters.yearMin != null ? `${filters.yearMin}+` : t('attr_vehicle_year')} onPress={() => setPicker('year')} />
-        {trimsInData.length > 0 && (
-          <FilterChip icon="options-outline" active={filters.trim != null} label={filters.trim ?? t('attr_vehicle_trim')} onPress={() => setPicker('trim')} />
-        )}
-        <FilterChip icon="speedometer-outline" active={filters.mileageMax != null} label={filters.mileageMax != null ? t('filter_maxKm', { count: groupThousands(filters.mileageMax) }) : t('attr_vehicle_mileage')} onPress={() => setPicker('mileage')} />
-        <FilterChip icon="cog-outline" active={filters.transmission != null} label={filters.transmission ? t(TRANSMISSION_LABEL[filters.transmission]) : t('attr_vehicle_transmission')} onPress={() => setPicker('transmission')} />
-        <FilterChip icon="pricetag-outline" active={priceIdx != null} label={priceIdx != null ? priceBracketLabel(CAR_PRICE_BRACKETS[priceIdx], t) : t('filter_price')} onPress={() => setPicker('price')} />
-        <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={sortLabels[sort]} onPress={() => setPicker('sort')} />
+      <View style={[styles.toolbar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <PressableScale
+          haptic
+          scaleTo={0.96}
+          accessibilityRole="button"
+          accessibilityLabel={t('filters_title')}
+          onPress={() => setShowFilters(true)}
+          style={[styles.toolBtn, { backgroundColor: activeCount > 0 ? theme.tint : theme.backgroundElement, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="options-outline" size={16} color={activeCount > 0 ? theme.onTint : theme.text} />
+          <ThemedText type="small" style={{ fontWeight: '700', color: activeCount > 0 ? theme.onTint : theme.text }}>
+            {activeCount > 0 ? t('filters_with_count', { count: activeCount }) : t('filters_title')}
+          </ThemedText>
+        </PressableScale>
+        <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={t(SORT_LABEL[sort])} onPress={() => setShowSort(true)} />
       </View>
+
+      {pills.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.pillRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          {pills.map((p) => (
+            <ActivePill key={p.key} label={p.label} onRemove={() => setFilters((f) => ({ ...f, ...p.clear }))} />
+          ))}
+          <PressableScale scaleTo={0.95} accessibilityRole="button" accessibilityLabel={t('filters_clear_all')} onPress={() => setFilters({})} style={styles.clearAll}>
+            <ThemedText type="small" themeColor="tint" style={{ fontWeight: '700' }}>{t('filters_clear_all')}</ThemedText>
+          </PressableScale>
+        </ScrollView>
+      )}
+
       <Animated.View key={results.length} entering={FadeInDown.duration(300)}>
         <ThemedText type="small" themeColor="textSecondary" style={[styles.count, { textAlign: isRTL ? 'right' : 'left' }]}>
           {t('search_results', { count: results.length })}
@@ -322,15 +302,33 @@ function VehiclesSection() {
       <Stack.Screen options={{ title: t('section_cars_title'), headerTitleStyle: { fontSize: 18, fontWeight: '800' } }} />
       <SectionList results={results} isLoading={isLoading} error={error} refetch={refetch} emptyIcon="car-sport-outline" header={header} />
 
-      <PickerSheet visible={picker === 'make'} title={t('attr_vehicle_make')} options={makeOptions} selectedId={filters.make ?? null} onSelect={(id) => setMake(id ?? undefined)} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'model'} title={t('attr_vehicle_model')} options={modelOptions} selectedId={filters.model ?? null} onSelect={(id) => setFilters((f) => ({ ...f, model: id ?? undefined }))} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'trim'} title={t('attr_vehicle_trim')} options={trimOptions} selectedId={filters.trim ?? null} onSelect={(id) => setFilters((f) => ({ ...f, trim: id ?? undefined }))} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'year'} title={t('attr_vehicle_year')} options={yearOptions} selectedId={filters.yearMin != null ? String(filters.yearMin) : null} onSelect={(id) => setFilters((f) => ({ ...f, yearMin: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'mileage'} title={t('attr_vehicle_mileage')} options={mileageOptions} selectedId={filters.mileageMax != null ? String(filters.mileageMax) : null} onSelect={(id) => setFilters((f) => ({ ...f, mileageMax: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'transmission'} title={t('attr_vehicle_transmission')} options={transmissionOptions} selectedId={filters.transmission ?? null} onSelect={(id) => setFilters((f) => ({ ...f, transmission: (id as Transmission | null) ?? undefined }))} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'price'} title={t('filter_price')} options={priceOptions} selectedId={priceIdx != null ? String(priceIdx) : null} onSelect={(id) => setPriceIdx(id != null ? Number(id) : null)} onClose={() => setPicker(null)} />
-      <PickerSheet visible={picker === 'sort'} title={t('search_sort')} options={sortOptions} selectedId={sort} onSelect={(id) => { if (id === 'newest' || id === 'price_low' || id === 'price_high') setSort(id); }} onClose={() => setPicker(null)} />
+      <CarFilterSheet visible={showFilters} base={base} initial={filters} onApply={setFilters} onClose={() => setShowFilters(false)} />
+      <PickerSheet visible={showSort} title={t('search_sort')} options={sortOptions} selectedId={sort} onSelect={(id) => { if (id) setSort(id as SortMode); }} onClose={() => setShowSort(false)} />
     </>
+  );
+}
+
+function ActivePill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  const theme = useTheme();
+  const { t, isRTL } = useI18n();
+  return (
+    <Animated.View
+      entering={FadeIn.duration(200)}
+      exiting={FadeOut.duration(150)}
+      layout={LinearTransition.springify().damping(18).stiffness(240).mass(0.7)}>
+      <PressableScale
+        haptic
+        scaleTo={0.94}
+        accessibilityRole="button"
+        accessibilityLabel={`${t('common_close')} ${label}`}
+        onPress={onRemove}
+        style={[styles.pill, { backgroundColor: theme.tintSoft, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <ThemedText type="small" numberOfLines={1} style={{ color: theme.tint, fontWeight: '700' }}>
+          {label}
+        </ThemedText>
+        <Ionicons name="close-circle" size={15} color={theme.tint} />
+      </PressableScale>
+    </Animated.View>
   );
 }
 
@@ -374,12 +372,9 @@ function RealEstateSection() {
     { id: null, label: t('search_all') },
     ...brackets.map((r, i) => ({ id: String(i), label: priceBracketLabel(r, t) })),
   ];
-  const sortLabels: Record<SortMode, string> = {
-    newest: t('search_sort_newest'),
-    price_low: t('search_sort_priceLow'),
-    price_high: t('search_sort_priceHigh'),
-  };
-  const sortOptions: PickerOption[] = (['newest', 'price_low', 'price_high'] as SortMode[]).map((id) => ({ id, label: sortLabels[id] }));
+  // Real estate offers the price/recency sorts (year/mileage are car-only).
+  const realEstateSorts: SortMode[] = ['newest', 'price_low', 'price_high'];
+  const sortOptions: PickerOption[] = realEstateSorts.map((id) => ({ id, label: t(SORT_LABEL[id]) }));
 
   const dealSegments: { value: DealType | undefined; label: string }[] = [
     { value: undefined, label: t('search_all') },
@@ -421,7 +416,7 @@ function RealEstateSection() {
         {filters.dealType != null && (
           <FilterChip icon="pricetag-outline" active={priceIdx != null} label={priceIdx != null ? priceBracketLabel(brackets[priceIdx], t) : t('filter_price')} onPress={() => setPicker('price')} />
         )}
-        <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={sortLabels[sort]} onPress={() => setPicker('sort')} />
+        <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={t(SORT_LABEL[sort])} onPress={() => setPicker('sort')} />
       </View>
       <Animated.View key={results.length} entering={FadeInDown.duration(300)}>
         <ThemedText type="small" themeColor="textSecondary" style={[styles.count, { textAlign: isRTL ? 'right' : 'left' }]}>
@@ -457,6 +452,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   chipRow: { flexWrap: 'wrap', gap: Spacing.one + 2, paddingHorizontal: Spacing.three },
+  toolbar: { alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three },
+  toolBtn: { alignItems: 'center', gap: Spacing.one + 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill },
+  pillRow: { alignItems: 'center', gap: Spacing.one + 2, paddingHorizontal: Spacing.three },
+  pill: { alignItems: 'center', gap: 4, paddingHorizontal: Spacing.two + 2, paddingVertical: Spacing.one + 2, borderRadius: Radius.pill },
+  clearAll: { paddingHorizontal: Spacing.two, paddingVertical: Spacing.one + 2 },
   chip: {
     alignItems: 'center',
     gap: 4,
