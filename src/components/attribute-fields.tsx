@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useState } from 'react';
-import { StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
 
 import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PressableScale } from '@/components/pressable-scale';
@@ -287,7 +288,30 @@ function PropertyFields({ value, onChange }: { value: PropertyAttributes; onChan
   const { t, isRTL } = useI18n();
   const theme = useTheme();
   const [showType, setShowType] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locDenied, setLocDenied] = useState(false);
   const align = isRTL ? 'right' : 'left';
+
+  // No formal addresses in Iraq → the owner drops a GPS pin from where they are.
+  const captureLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    setLocDenied(false);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocDenied(true);
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      onChange({ ...value, lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch {
+      setLocDenied(true);
+    } finally {
+      setLocating(false);
+    }
+  };
+  const hasPin = value.lat != null && value.lng != null;
 
   const typeOptions: PickerOption[] = (Object.keys(PROPERTY_TYPE_LABEL) as PropertyType[]).map((p) => ({
     id: p,
@@ -355,6 +379,46 @@ function PropertyFields({ value, onChange }: { value: PropertyAttributes; onChan
           trackColor={{ true: theme.tint, false: theme.border }}
         />
       </View>
+
+      <Labeled label={t('attr_location')} align={align}>
+        <PressableScale
+          haptic
+          scaleTo={0.98}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityLabel={t(hasPin ? 'loc_captured' : 'loc_useCurrent')}
+          onPress={() => void captureLocation()}
+          style={[
+            styles.locateBtn,
+            { backgroundColor: hasPin ? theme.backgroundElement : theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' },
+          ]}>
+          {locating ? (
+            <ActivityIndicator color={hasPin ? theme.text : theme.onTint} />
+          ) : (
+            <>
+              <Ionicons name={hasPin ? 'checkmark-circle' : 'locate'} size={18} color={hasPin ? theme.tint : theme.onTint} />
+              <ThemedText style={{ color: hasPin ? theme.text : theme.onTint, fontWeight: '700' }}>
+                {t(hasPin ? 'loc_captured' : 'loc_useCurrent')}
+              </ThemedText>
+            </>
+          )}
+        </PressableScale>
+        {locDenied && (
+          <ThemedText type="small" themeColor="danger" style={{ textAlign: align }}>
+            {t('loc_denied')}
+          </ThemedText>
+        )}
+        {hasPin && (
+          <View style={[styles.switchRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <ThemedText type="small">{t('loc_showExact')}</ThemedText>
+            <Switch
+              value={!value.hideExactLocation}
+              onValueChange={(showExact) => onChange({ ...value, hideExactLocation: showExact ? undefined : true })}
+              trackColor={{ true: theme.tint, false: theme.border }}
+            />
+          </View>
+        )}
+      </Labeled>
 
       <PickerSheet
         visible={showType}
@@ -492,6 +556,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   switchRow: { alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.one },
+  locateBtn: { alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three, borderRadius: Radius.pill, minHeight: 48 },
   dietWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   dietChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth },
 });
