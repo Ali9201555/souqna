@@ -150,6 +150,46 @@ export const SEED_LISTINGS: Listing[] = [
     condition: 'used', images: img('corolla2', 3), sellerId: 's3', createdAt: hrs(9),
     attributes: { kind: 'vehicle', make: 'toyota', model: 'corolla', trim: 'SE', year: 2021, mileageKm: 30_000, transmission: 'automatic', fuel: 'gasoline' },
   },
+  {
+    id: 'l18',
+    title: 'دولمة عراقية بالطريقة البغدادية',
+    description: 'دولمة بيتية لذيذة، ورق عنب ويخضار محشية بالتمن واللحم. تكفي 4-5 أشخاص. تحتاج طلب قبل يوم.',
+    priceIqd: 25_000, negotiable: false, categoryId: 'food', governorateId: 'baghdad',
+    condition: 'new', images: img('dolma', 2), sellerId: 's2', createdAt: mins(50),
+    attributes: { kind: 'food', cuisine: 'iraqi', dishType: 'main', servings: 5, leadTimeHours: 24, fulfillment: 'both' },
+  },
+  {
+    id: 'l19',
+    title: 'كليجة عيد بحشوة التمر والجوز',
+    description: 'كليجة بيتية طازة بالتمر والجوز وجوز الهند. علبة نص كيلو. تنفع للعيد والضيوف.',
+    priceIqd: 12_000, negotiable: false, categoryId: 'food', governorateId: 'basra',
+    condition: 'new', images: img('kleicha', 2), sellerId: 's4', createdAt: hrs(2),
+    attributes: { kind: 'food', cuisine: 'sweets', dishType: 'dessert', servings: 8, leadTimeHours: 48, fulfillment: 'delivery' },
+  },
+  {
+    id: 'l20',
+    title: 'برياني دجاج هندي حار',
+    description: 'برياني دجاج بالبهارات الهندية الأصلية وزعفران. وجبة فردية كاملة مع الرز والصوص.',
+    priceIqd: 8_000, negotiable: false, categoryId: 'food', governorateId: 'erbil',
+    condition: 'new', images: img('biryani', 1), sellerId: 's3', createdAt: hrs(4),
+    attributes: { kind: 'food', cuisine: 'indian', dishType: 'rice', diet: ['spicy'], servings: 1, leadTimeHours: 3, fulfillment: 'both' },
+  },
+  {
+    id: 'l21',
+    title: 'سلطة فتوش طازة - نباتي',
+    description: 'فتوش بالخضار الطازة وخبز محمص ودبس رمان. تكفي شخصين. تنعمل يومياً طلب صباحي.',
+    priceIqd: 5_000, negotiable: false, categoryId: 'food', governorateId: 'baghdad',
+    condition: 'new', images: img('fattoush', 1), sellerId: 's2', createdAt: hrs(6),
+    attributes: { kind: 'food', cuisine: 'levantine', dishType: 'salad', diet: ['vegetarian', 'vegan'], servings: 2, leadTimeHours: 4, fulfillment: 'pickup' },
+  },
+  {
+    id: 'l22',
+    title: 'بقلاوة شامية بالفستق الحلبي',
+    description: 'بقلاوة بيتية بطبقات رقيقة وفستق حلبي وقطر. علبة كيلو، مثالية للمناسبات.',
+    priceIqd: 35_000, negotiable: true, categoryId: 'food', governorateId: 'najaf',
+    condition: 'new', images: img('baklava', 2), sellerId: 's1', createdAt: days(1),
+    attributes: { kind: 'food', cuisine: 'levantine', dishType: 'dessert', servings: 10, leadTimeHours: 24, fulfillment: 'both' },
+  },
 ];
 
 export const SEED_THREADS: ChatThread[] = [

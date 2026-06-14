@@ -41,12 +41,13 @@ import { useChat } from '@/data/ChatProvider';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
 import { DEMO_USER_ID } from '@/data/seed';
+import { getCuisine, getDietTag, getDishType } from '@/data/cuisines';
 import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
-import { DEAL_TYPE_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
+import { DEAL_TYPE_LABEL, FULFILLMENT_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
 import { formatPrice, formatRelativeTime, groupThousands } from '@/lib/format';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -407,6 +408,33 @@ export default function ListingDetailScreen() {
                   )}
                   {listing.attributes.furnished != null && (
                     <DetailRow icon="cube-outline" label={t('attr_furnished')} value={listing.attributes.furnished ? t('common_yes') : t('common_no')} />
+                  )}
+                </>
+              )}
+
+              {listing.attributes?.kind === 'food' && (
+                <>
+                  {listing.attributes.cuisine != null && (
+                    <DetailRow icon="restaurant-outline" label={t('attr_cuisine')} value={getCuisine(listing.attributes.cuisine)?.name[lang] ?? listing.attributes.cuisine} />
+                  )}
+                  {listing.attributes.dishType != null && (
+                    <DetailRow icon="fast-food-outline" label={t('attr_dishType')} value={getDishType(listing.attributes.dishType)?.name[lang] ?? listing.attributes.dishType} />
+                  )}
+                  {listing.attributes.servings != null && (
+                    <DetailRow icon="people-outline" label={t('attr_servings')} value={t('fact_servings', { count: listing.attributes.servings })} />
+                  )}
+                  {listing.attributes.leadTimeHours != null && (
+                    <DetailRow icon="time-outline" label={t('attr_leadTime')} value={String(listing.attributes.leadTimeHours)} />
+                  )}
+                  {listing.attributes.fulfillment != null && (
+                    <DetailRow icon="bag-handle-outline" label={t('attr_fulfillment')} value={t(FULFILLMENT_LABEL[listing.attributes.fulfillment])} />
+                  )}
+                  {listing.attributes.diet != null && listing.attributes.diet.length > 0 && (
+                    <DetailRow
+                      icon="leaf-outline"
+                      label={t('attr_diet')}
+                      value={listing.attributes.diet.map((d) => getDietTag(d)?.name[lang] ?? d).join('، ')}
+                    />
                   )}
                 </>
               )}

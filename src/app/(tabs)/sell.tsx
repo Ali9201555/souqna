@@ -41,6 +41,7 @@ const MAX_STAGGER_INDEX = 8;
 function attributeShell(categoryId: string | null): ListingAttributes | undefined {
   if (categoryId === 'vehicles') return { kind: 'vehicle' };
   if (categoryId === 'realestate') return { kind: 'property', dealType: 'sale' };
+  if (categoryId === 'food') return { kind: 'food', fulfillment: 'pickup' };
   return undefined;
 }
 

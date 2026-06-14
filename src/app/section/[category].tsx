@@ -22,13 +22,16 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Motion, Radius, Shadow, Spacing } from '@/constants/theme';
+import { CUISINES, DIET_TAGS, DISH_TYPES, getCuisine, getDishType } from '@/data/cuisines';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
 import {
   countVehicleFilters,
+  matchesFoodFilters,
   matchesPropertyFilters,
   matchesVehicleFilters,
   sortListings,
+  type FoodFilters,
   type PriceRange,
   type PropertyFilters,
   type SortMode,
@@ -39,10 +42,10 @@ import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
-import { DEAL_TYPE_SHORT, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
+import { DEAL_TYPE_SHORT, FULFILLMENT_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
 import { groupThousands } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
-import type { DealType, Language, Listing, PropertyType } from '@/types';
+import type { DealType, Fulfillment, Language, Listing, PropertyType } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -60,6 +63,13 @@ const SALE_PRICE_BRACKETS: PriceRange[] = [
   { min: 100_000_000, max: 300_000_000 },
   { min: 300_000_000, max: 600_000_000 },
   { min: 600_000_000 },
+];
+
+const FOOD_PRICE_BRACKETS: PriceRange[] = [
+  { max: 10_000 },
+  { min: 10_000, max: 25_000 },
+  { min: 25_000, max: 50_000 },
+  { min: 50_000 },
 ];
 
 const VEHICLE_SORTS: SortMode[] = ['newest', 'price_low', 'price_high', 'year_new', 'mileage_low'];
@@ -190,7 +200,9 @@ export default function SectionScreen() {
     // Self-healing deep links: section-less categories use the generic search.
     return <Redirect href={{ pathname: '/search', params: { category: category ?? '' } }} />;
   }
-  return category === 'vehicles' ? <VehiclesSection /> : <RealEstateSection />;
+  if (category === 'vehicles') return <VehiclesSection />;
+  if (category === 'food') return <FoodSection />;
+  return <RealEstateSection />;
 }
 
 function useSectionBase(categoryId: string) {
@@ -434,6 +446,67 @@ function RealEstateSection() {
       <PickerSheet visible={picker === 'type'} title={t('attr_property_type')} options={typeOptions} selectedId={filters.propertyType ?? null} onSelect={(id) => setFilters((f) => ({ ...f, propertyType: (id as PropertyType | null) ?? undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'beds'} title={t('attr_bedrooms')} options={bedsOptions} selectedId={filters.bedroomsMin != null ? String(filters.bedroomsMin) : null} onSelect={(id) => setFilters((f) => ({ ...f, bedroomsMin: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'area'} title={t('attr_area')} options={areaOptions} selectedId={filters.areaM2Min != null ? String(filters.areaM2Min) : null} onSelect={(id) => setFilters((f) => ({ ...f, areaM2Min: id != null ? Number(id) : undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'price'} title={t('filter_price')} options={priceOptions} selectedId={priceIdx != null ? String(priceIdx) : null} onSelect={(id) => setPriceIdx(id != null ? Number(id) : null)} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'sort'} title={t('search_sort')} options={sortOptions} selectedId={sort} onSelect={(id) => { if (id === 'newest' || id === 'price_low' || id === 'price_high') setSort(id); }} onClose={() => setPicker(null)} />
+    </>
+  );
+}
+
+function FoodSection() {
+  const { t, lang, isRTL } = useI18n();
+  const { base, isLoading, error, refetch } = useSectionBase('food');
+
+  const [filters, setFilters] = useState<FoodFilters>({});
+  const [priceIdx, setPriceIdx] = useState<number | null>(null);
+  const [sort, setSort] = useState<SortMode>('newest');
+  const [picker, setPicker] = useState<null | 'cuisine' | 'dish' | 'diet' | 'fulfillment' | 'price' | 'sort'>(null);
+
+  const effective: FoodFilters = useMemo(
+    () => ({ ...filters, price: priceIdx != null ? FOOD_PRICE_BRACKETS[priceIdx] : undefined }),
+    [filters, priceIdx],
+  );
+  const results = useMemo(() => sortListings(base.filter((l) => matchesFoodFilters(l, effective)), sort), [base, effective, sort]);
+
+  const all = { id: null, label: t('search_all') };
+  const cuisineOptions: PickerOption[] = [all, ...CUISINES.map((c) => ({ id: c.id, label: c.name[lang] }))];
+  const dishOptions: PickerOption[] = [all, ...DISH_TYPES.map((d) => ({ id: d.id, label: d.name[lang] }))];
+  const dietOptions: PickerOption[] = [all, ...DIET_TAGS.map((d) => ({ id: d.id, label: d.name[lang] }))];
+  const fulfillmentOptions: PickerOption[] = [
+    all,
+    { id: 'pickup', label: t(FULFILLMENT_LABEL.pickup) },
+    { id: 'delivery', label: t(FULFILLMENT_LABEL.delivery) },
+  ];
+  const priceOptions: PickerOption[] = [all, ...FOOD_PRICE_BRACKETS.map((r, i) => ({ id: String(i), label: priceBracketLabel(r, t) }))];
+  const foodSorts: SortMode[] = ['newest', 'price_low', 'price_high'];
+  const sortOptions: PickerOption[] = foodSorts.map((id) => ({ id, label: t(SORT_LABEL[id]) }));
+
+  const header = (
+    <View style={styles.controls}>
+      <View style={[styles.chipRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <FilterChip icon="restaurant-outline" active={filters.cuisine != null} label={filters.cuisine ? (getCuisine(filters.cuisine)?.name[lang] ?? t('attr_cuisine')) : t('attr_cuisine')} onPress={() => setPicker('cuisine')} />
+        <FilterChip icon="fast-food-outline" active={filters.dishType != null} label={filters.dishType ? (getDishType(filters.dishType)?.name[lang] ?? t('attr_dishType')) : t('attr_dishType')} onPress={() => setPicker('dish')} />
+        <FilterChip icon="leaf-outline" active={filters.diet != null} label={filters.diet ? (DIET_TAGS.find((d) => d.id === filters.diet)?.name[lang] ?? t('attr_diet')) : t('attr_diet')} onPress={() => setPicker('diet')} />
+        <FilterChip icon="bag-handle-outline" active={filters.fulfillment != null} label={filters.fulfillment ? t(FULFILLMENT_LABEL[filters.fulfillment]) : t('attr_fulfillment')} onPress={() => setPicker('fulfillment')} />
+        <FilterChip icon="pricetag-outline" active={priceIdx != null} label={priceIdx != null ? priceBracketLabel(FOOD_PRICE_BRACKETS[priceIdx], t) : t('filter_price')} onPress={() => setPicker('price')} />
+        <FilterChip icon="swap-vertical-outline" active={sort !== 'newest'} label={t(SORT_LABEL[sort])} onPress={() => setPicker('sort')} />
+      </View>
+      <Animated.View key={results.length} entering={FadeInDown.duration(300)}>
+        <ThemedText type="small" themeColor="textSecondary" style={[styles.count, { textAlign: isRTL ? 'right' : 'left' }]}>
+          {t('search_results', { count: results.length })}
+        </ThemedText>
+      </Animated.View>
+    </View>
+  );
+
+  return (
+    <>
+      <Stack.Screen options={{ title: t('section_food_title'), headerTitleStyle: { fontSize: 18, fontWeight: '800' } }} />
+      <SectionList results={results} isLoading={isLoading} error={error} refetch={refetch} emptyIcon="restaurant-outline" header={header} />
+
+      <PickerSheet visible={picker === 'cuisine'} title={t('attr_cuisine')} options={cuisineOptions} selectedId={filters.cuisine ?? null} onSelect={(id) => setFilters((f) => ({ ...f, cuisine: id ?? undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'dish'} title={t('attr_dishType')} options={dishOptions} selectedId={filters.dishType ?? null} onSelect={(id) => setFilters((f) => ({ ...f, dishType: id ?? undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'diet'} title={t('attr_diet')} options={dietOptions} selectedId={filters.diet ?? null} onSelect={(id) => setFilters((f) => ({ ...f, diet: id ?? undefined }))} onClose={() => setPicker(null)} />
+      <PickerSheet visible={picker === 'fulfillment'} title={t('attr_fulfillment')} options={fulfillmentOptions} selectedId={filters.fulfillment ?? null} onSelect={(id) => setFilters((f) => ({ ...f, fulfillment: (id as Fulfillment | null) ?? undefined }))} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'price'} title={t('filter_price')} options={priceOptions} selectedId={priceIdx != null ? String(priceIdx) : null} onSelect={(id) => setPriceIdx(id != null ? Number(id) : null)} onClose={() => setPicker(null)} />
       <PickerSheet visible={picker === 'sort'} title={t('search_sort')} options={sortOptions} selectedId={sort} onSelect={(id) => { if (id === 'newest' || id === 'price_low' || id === 'price_high') setSort(id); }} onClose={() => setPicker(null)} />
     </>

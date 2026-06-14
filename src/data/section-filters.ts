@@ -1,4 +1,4 @@
-import type { DealType, FuelType, Listing, ListingCondition, PropertyType, Transmission } from '@/types';
+import type { DealType, Fulfillment, FuelType, Listing, ListingCondition, PropertyType, Transmission } from '@/types';
 
 /**
  * Section filter state + pure predicates. These predicates are the contract
@@ -78,6 +78,29 @@ export function matchesPropertyFilters(listing: Listing, f: PropertyFilters): bo
   if (f.propertyType != null && p?.propertyType !== f.propertyType) return false;
   if (f.bedroomsMin != null && (p?.bedrooms == null || p.bedrooms < f.bedroomsMin)) return false;
   if (f.areaM2Min != null && (p?.areaM2 == null || p.areaM2 < f.areaM2Min)) return false;
+  return true;
+}
+
+export type FoodFilters = {
+  cuisine?: string;
+  dishType?: string;
+  /** A single dietary tag the dish must carry. */
+  diet?: string;
+  /** A `both` dish satisfies either a pickup or a delivery filter. */
+  fulfillment?: Fulfillment;
+  governorateId?: string;
+  price?: PriceRange;
+};
+
+export function matchesFoodFilters(listing: Listing, f: FoodFilters): boolean {
+  if (!matchesPrice(listing.priceIqd, f.price)) return false;
+  const a = listing.attributes;
+  const d = a?.kind === 'food' ? a : undefined;
+  if (f.cuisine != null && d?.cuisine !== f.cuisine) return false;
+  if (f.dishType != null && d?.dishType !== f.dishType) return false;
+  if (f.diet != null && !(d?.diet ?? []).includes(f.diet)) return false;
+  if (f.fulfillment != null && d?.fulfillment !== f.fulfillment && d?.fulfillment !== 'both') return false;
+  if (f.governorateId != null && listing.governorateId !== f.governorateId) return false;
   return true;
 }
 
