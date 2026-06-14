@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +20,7 @@ export function PickerSheet({
   selectedId,
   onSelect,
   onClose,
+  searchable,
 }: {
   visible: boolean;
   title: string;
@@ -26,6 +28,8 @@ export function PickerSheet({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onClose: () => void;
+  /** Show a filter box. Defaults on for long lists (e.g. 200+ car makes). */
+  searchable?: boolean;
 }) {
   const theme = useTheme();
   const scheme = useColorScheme();
@@ -33,15 +37,28 @@ export function PickerSheet({
   const { t, isRTL } = useI18n();
   const rowDir = isRTL ? 'row-reverse' : 'row';
 
+  const showSearch = searchable ?? options.length > 12;
+  const [query, setQuery] = useState('');
+  // The sheet never unmounts (Modal toggles visibility), so clear the query as
+  // we close rather than in an effect.
+  const close = () => {
+    setQuery('');
+    onClose();
+  };
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+  }, [options, query]);
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
       <View style={styles.root}>
         <Animated.View entering={FadeIn.duration(180)} style={styles.backdrop}>
           <Pressable
             style={StyleSheet.absoluteFill}
             accessibilityRole="button"
             accessibilityLabel={t('common_close')}
-            onPress={onClose}
+            onPress={close}
           />
         </Animated.View>
         <Animated.View
@@ -71,13 +88,26 @@ export function PickerSheet({
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={t('common_close')}
-              onPress={onClose}
+              onPress={close}
               style={[styles.closeBtn, { backgroundColor: theme.backgroundElement }]}>
               <Ionicons name="close" size={18} color={theme.textSecondary} />
             </PressableScale>
           </View>
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-            {options.map((opt) => {
+          {showSearch && (
+            <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement, flexDirection: rowDir }]}>
+              <Ionicons name="search" size={18} color={theme.textSecondary} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('search_placeholder')}
+                placeholderTextColor={theme.textSecondary}
+                autoCorrect={false}
+                style={[styles.searchInput, { color: theme.text, textAlign: isRTL ? 'right' : 'left' }]}
+              />
+            </View>
+          )}
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled">
+            {shown.map((opt) => {
               const selected = opt.id === selectedId;
               return (
                 <PressableScale
@@ -88,7 +118,7 @@ export function PickerSheet({
                   accessibilityState={{ selected }}
                   onPress={() => {
                     onSelect(opt.id);
-                    onClose();
+                    close();
                   }}
                   style={[
                     styles.option,
@@ -137,6 +167,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  searchBox: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.lg,
+  },
+  searchInput: { flex: 1, paddingVertical: Spacing.three, fontSize: 15 },
   list: { maxHeight: 400 },
   listContent: { paddingHorizontal: Spacing.two, gap: Spacing.half, paddingBottom: Spacing.two },
   option: {
