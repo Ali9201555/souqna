@@ -1,5 +1,5 @@
 import type { TKey } from '@/i18n/translations';
-import type { DealType, FuelType, PropertyType, Transmission } from '@/types';
+import type { DealType, Fulfillment, FuelType, PropertyType, Transmission } from '@/types';
 
 /** i18n keys for attribute enum values, shared by Sell inputs, cards, filters, detail. */
 
@@ -39,4 +39,10 @@ export const DEAL_TYPE_LABEL: Record<DealType, TKey> = {
 export const DEAL_TYPE_SHORT: Record<DealType, TKey> = {
   sale: 'attr_deal_sale_short',
   rent: 'attr_deal_rent_short',
+};
+
+export const FULFILLMENT_LABEL: Record<Fulfillment, TKey> = {
+  pickup: 'fulfillment_pickup',
+  delivery: 'fulfillment_delivery',
+  both: 'fulfillment_both',
 };

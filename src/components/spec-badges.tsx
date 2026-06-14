@@ -6,10 +6,11 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
+import { getCuisine, getDishType } from '@/data/cuisines';
 import { DEAL_TYPE_SHORT, FUEL_LABEL, TRANSMISSION_SHORT } from '@/lib/attribute-labels';
 import { groupThousands } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
-import type { Listing } from '@/types';
+import type { Language, Listing } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 type Badge = { icon: IoniconName; label: string };
@@ -21,8 +22,17 @@ function compactKm(km: number): string {
 }
 
 /** Icon + label spec badges for a listing's structured attributes (cars, property). */
-export function specBadgesFor(listing: Listing, t: Translate): Badge[] {
+export function specBadgesFor(listing: Listing, t: Translate, lang: Language): Badge[] {
   const a = listing.attributes;
+  if (a?.kind === 'food') {
+    const out: Badge[] = [];
+    const cuisine = a.cuisine ? getCuisine(a.cuisine) : undefined;
+    if (cuisine) out.push({ icon: 'restaurant-outline', label: cuisine.name[lang] });
+    const dish = a.dishType ? getDishType(a.dishType) : undefined;
+    if (dish) out.push({ icon: dish.icon as IoniconName, label: dish.name[lang] });
+    if (a.servings != null) out.push({ icon: 'people-outline', label: t('fact_servings', { count: a.servings }) });
+    return out;
+  }
   if (a?.kind === 'vehicle') {
     const out: Badge[] = [];
     if (a.year != null) out.push({ icon: 'calendar-outline', label: String(a.year) });
@@ -47,8 +57,8 @@ export function specBadgesFor(listing: Listing, t: Translate): Badge[] {
  */
 export function SpecBadges({ listing, max }: { listing: Listing; max?: number }) {
   const theme = useTheme();
-  const { t, isRTL } = useI18n();
-  const badges = specBadgesFor(listing, t).slice(0, max ?? 99);
+  const { t, lang, isRTL } = useI18n();
+  const badges = specBadgesFor(listing, t, lang).slice(0, max ?? 99);
   if (badges.length === 0) return null;
 
   return (

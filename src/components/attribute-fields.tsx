@@ -6,14 +6,17 @@ import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
+import { CUISINES, DIET_TAGS, DISH_TYPES } from '@/data/cuisines';
 import { VEHICLE_MAKES, getModelsForMake, getVehicleMake, getVehicleModel, modelLabel } from '@/data/vehicle-makes';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
-import { DEAL_TYPE_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
+import { DEAL_TYPE_LABEL, FULFILLMENT_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
 import { parseIntField } from '@/lib/format';
 import type { TKey } from '@/i18n/translations';
 import type {
   DealType,
+  FoodAttributes,
+  Fulfillment,
   FuelType,
   ListingAttributes,
   PropertyAttributes,
@@ -39,7 +42,102 @@ export function AttributeFields({
 }) {
   if (value?.kind === 'vehicle') return <VehicleFields value={value} onChange={onChange} />;
   if (value?.kind === 'property') return <PropertyFields value={value} onChange={onChange} />;
+  if (value?.kind === 'food') return <FoodFields value={value} onChange={onChange} />;
   return null;
+}
+
+function FoodFields({ value, onChange }: { value: FoodAttributes; onChange: (next: FoodAttributes) => void }) {
+  const { t, lang, isRTL } = useI18n();
+  const theme = useTheme();
+  const [showCuisine, setShowCuisine] = useState(false);
+  const [showDish, setShowDish] = useState(false);
+  const align = isRTL ? 'right' : 'left';
+
+  const cuisineOptions: PickerOption[] = CUISINES.map((c) => ({ id: c.id, label: c.name[lang] }));
+  const dishOptions: PickerOption[] = DISH_TYPES.map((d) => ({ id: d.id, label: d.name[lang] }));
+  const cuisineLabel = value.cuisine ? (CUISINES.find((c) => c.id === value.cuisine)?.name[lang] ?? t('sell_choose')) : t('sell_choose');
+  const dishLabel = value.dishType ? (DISH_TYPES.find((d) => d.id === value.dishType)?.name[lang] ?? t('sell_choose')) : t('sell_choose');
+
+  const toggleDiet = (id: string) => {
+    const set = new Set(value.diet ?? []);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    onChange({ ...value, diet: set.size ? [...set] : undefined });
+  };
+
+  return (
+    <>
+      <Labeled label={t('attr_cuisine')} align={align}>
+        <SelectRow label={cuisineLabel} onPress={() => setShowCuisine(true)} />
+      </Labeled>
+
+      <Labeled label={t('attr_dishType')} align={align}>
+        <SelectRow label={dishLabel} onPress={() => setShowDish(true)} />
+      </Labeled>
+
+      <View style={[styles.pairRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={styles.pairItem}>
+          <Labeled label={t('attr_servings')} align={align}>
+            <FocusInput
+              value={value.servings != null ? String(value.servings) : ''}
+              onChangeText={(v) => onChange({ ...value, servings: parseIntField(v) })}
+              placeholder={t('attr_ph_servings')}
+              keyboardType="number-pad"
+              maxLength={3}
+              style={styles.ltrDigits}
+            />
+          </Labeled>
+        </View>
+        <View style={styles.pairItem}>
+          <Labeled label={t('attr_leadTime')} align={align}>
+            <FocusInput
+              value={value.leadTimeHours != null ? String(value.leadTimeHours) : ''}
+              onChangeText={(v) => onChange({ ...value, leadTimeHours: parseIntField(v) })}
+              placeholder={t('attr_ph_leadTime')}
+              keyboardType="number-pad"
+              maxLength={3}
+              style={styles.ltrDigits}
+            />
+          </Labeled>
+        </View>
+      </View>
+
+      <Labeled label={t('attr_fulfillment')} align={align}>
+        <Segmented<Fulfillment>
+          options={['pickup', 'delivery', 'both']}
+          labels={FULFILLMENT_LABEL}
+          selected={value.fulfillment}
+          onSelect={(fulfillment) => onChange({ ...value, fulfillment })}
+        />
+      </Labeled>
+
+      <Labeled label={t('attr_diet')} align={align}>
+        <View style={styles.dietWrap}>
+          {DIET_TAGS.map((tag) => {
+            const active = (value.diet ?? []).includes(tag.id);
+            return (
+              <PressableScale
+                key={tag.id}
+                haptic
+                scaleTo={0.94}
+                accessibilityRole="button"
+                accessibilityLabel={tag.name[lang]}
+                accessibilityState={{ selected: active }}
+                onPress={() => toggleDiet(tag.id)}
+                style={[styles.dietChip, { backgroundColor: active ? theme.tintSoft : theme.backgroundElement, borderColor: active ? theme.tint : 'transparent' }]}>
+                <ThemedText type="small" style={{ color: active ? theme.tint : theme.text, fontWeight: active ? '700' : '500' }}>
+                  {tag.name[lang]}
+                </ThemedText>
+              </PressableScale>
+            );
+          })}
+        </View>
+      </Labeled>
+
+      <PickerSheet visible={showCuisine} title={t('attr_cuisine')} options={cuisineOptions} selectedId={value.cuisine ?? null} onSelect={(id) => onChange({ ...value, cuisine: id ?? undefined })} onClose={() => setShowCuisine(false)} />
+      <PickerSheet visible={showDish} title={t('attr_dishType')} options={dishOptions} selectedId={value.dishType ?? null} onSelect={(id) => onChange({ ...value, dishType: id ?? undefined })} onClose={() => setShowDish(false)} />
+    </>
+  );
 }
 
 const MODEL_OTHER = '__other__';
@@ -394,4 +492,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   switchRow: { alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.one },
+  dietWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  dietChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth },
 });

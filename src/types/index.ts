@@ -64,7 +64,25 @@ export interface PropertyAttributes {
   furnished?: boolean;
 }
 
-export type ListingAttributes = VehicleAttributes | PropertyAttributes;
+export type Fulfillment = 'pickup' | 'delivery' | 'both';
+
+/** Structured facts for the home-cooked Food section. `priceIqd` is per portion. */
+export interface FoodAttributes {
+  kind: 'food';
+  /** Cuisine id from CUISINES (e.g. 'iraqi'). */
+  cuisine?: string;
+  /** Dish-type id from DISH_TYPES (e.g. 'main'). */
+  dishType?: string;
+  /** Dietary tag ids from DIET_TAGS (e.g. ['vegetarian']). */
+  diet?: string[];
+  /** Portions the price covers. */
+  servings?: number;
+  /** Hours of notice the cook needs before pickup/delivery. */
+  leadTimeHours?: number;
+  fulfillment?: Fulfillment;
+}
+
+export type ListingAttributes = VehicleAttributes | PropertyAttributes | FoodAttributes;
 
 export interface Listing {
   id: string;

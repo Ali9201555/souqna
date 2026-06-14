@@ -36,7 +36,9 @@ const SELECT_WITH_IMAGES = '*, listing_images(url, sort_order)';
 /** Accept only the discriminated shapes the client knows; anything else → undefined. */
 function mapAttributes(value: Record<string, unknown> | null): ListingAttributes | undefined {
   if (value == null) return undefined;
-  return value.kind === 'vehicle' || value.kind === 'property' ? (value as unknown as ListingAttributes) : undefined;
+  return value.kind === 'vehicle' || value.kind === 'property' || value.kind === 'food'
+    ? (value as unknown as ListingAttributes)
+    : undefined;
 }
 
 function mapListing(row: ListingRowWithImages): Listing {
