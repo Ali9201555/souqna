@@ -96,6 +96,11 @@ export interface PropertyAttributes {
   /** Amenity ids from AMENITIES. */
   amenities?: string[];
   utilities?: PropertyUtilities;
+  /** GPS pin — Iraq has no formal street addresses, so owners drop a pin instead. */
+  lat?: number;
+  lng?: number;
+  /** When true, only an approximate area is shown publicly, not the exact pin. */
+  hideExactLocation?: boolean;
 }
 
 export type Fulfillment = 'pickup' | 'delivery' | 'both';

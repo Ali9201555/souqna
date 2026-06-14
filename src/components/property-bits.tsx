@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import type { ComponentProps } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
+import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { getAmenity } from '@/data/amenities';
@@ -126,8 +128,57 @@ export function PriceTag({
   );
 }
 
+/**
+ * GPS-pin location preview. Iraq has no formal street addresses, so listings
+ * carry a dropped pin. v1 = a keyless OpenStreetMap static image + "Open in
+ * Maps" (no Google key / dev build needed). When `approximate` is set, the map
+ * zooms out and drops no marker — the privacy mode.
+ */
+export function PropertyLocationCard({ lat, lng, approximate }: { lat: number; lng: number; approximate?: boolean }) {
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  const { t, isRTL } = useI18n();
+
+  const zoom = approximate ? 13 : 16;
+  const marker = approximate ? '' : `&markers=${lat},${lng},lightblue1`;
+  const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=600x300&maptype=mapnik${marker}`;
+  const openMaps = () => void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+
+  return (
+    <View
+      style={[
+        styles.locCard,
+        { backgroundColor: theme.surface, boxShadow: Shadow.card },
+        scheme === 'dark' && { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+      ]}>
+      <Image source={{ uri: mapUrl }} style={styles.locMap} contentFit="cover" transition={200} />
+      <View style={styles.locBody}>
+        {approximate && (
+          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+            {t('loc_approx')}
+          </ThemedText>
+        )}
+        <PressableScale
+          haptic
+          scaleTo={0.98}
+          accessibilityRole="button"
+          accessibilityLabel={t('loc_openMaps')}
+          onPress={openMaps}
+          style={[styles.locBtn, { backgroundColor: theme.tint, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="navigate" size={16} color={theme.onTint} />
+          <ThemedText style={{ color: theme.onTint, fontWeight: '800' }}>{t('loc_openMaps')}</ThemedText>
+        </PressableScale>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
+  locCard: { borderRadius: Radius.lg, overflow: 'hidden' },
+  locMap: { width: '100%', aspectRatio: 2, backgroundColor: 'rgba(0,0,0,0.06)' },
+  locBody: { padding: Spacing.three, gap: Spacing.two },
+  locBtn: { alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three, borderRadius: Radius.pill },
   titleRow: { alignItems: 'center', gap: Spacing.two },
   title: { flex: 1, fontSize: 15, fontWeight: '800' },
   wrap: { flexWrap: 'wrap', gap: Spacing.two },

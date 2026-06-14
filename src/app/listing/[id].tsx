@@ -29,7 +29,7 @@ import Animated, {
 import { Avatar } from '@/components/avatar';
 import { IMAGE_PLACEHOLDER } from '@/components/listing-card';
 import { PressableScale } from '@/components/pressable-scale';
-import { AmenityChips, PriceTag, UtilityBadges } from '@/components/property-bits';
+import { AmenityChips, PriceTag, PropertyLocationCard, UtilityBadges } from '@/components/property-bits';
 import { ReportListingSheet } from '@/components/report-listing-sheet';
 import { SellerVerificationBadge } from '@/components/seller-verification-badge';
 import { Skeleton } from '@/components/skeleton';
@@ -300,6 +300,12 @@ export default function ListingDetailScreen() {
             <Animated.View entering={enterBlock(1)} style={styles.amenitiesBlock}>
               <ThemedText type="smallBold" style={{ textAlign: align }}>{t('detail_amenities')}</ThemedText>
               <AmenityChips ids={listing.attributes.amenities} />
+            </Animated.View>
+          )}
+          {listing.attributes?.kind === 'property' && listing.attributes.lat != null && listing.attributes.lng != null && (
+            <Animated.View entering={enterBlock(2)} style={styles.amenitiesBlock}>
+              <ThemedText type="smallBold" style={{ textAlign: align }}>{t('attr_location')}</ThemedText>
+              <PropertyLocationCard lat={listing.attributes.lat} lng={listing.attributes.lng} approximate={listing.attributes.hideExactLocation} />
             </Animated.View>
           )}
 
