@@ -37,10 +37,12 @@ export type FuelType = 'gasoline' | 'diesel' | 'hybrid' | 'electric' | 'lpg';
 /** Structured facts for the Cars section. All numeric values are JSON numbers. */
 export interface VehicleAttributes {
   kind: 'vehicle';
-  /** Lowercase make id from VEHICLE_MAKES (e.g. 'toyota'), or 'other'. */
+  /** Make id from VEHICLE_MAKES (e.g. 'toyota'), or 'other'. */
   make?: string;
-  /** Free-text model, e.g. "كورولا XLI". */
+  /** Model id within the make (from VEHICLE_MAKES), or free text when unlisted. */
   model?: string;
+  /** Free-text trim/grade, e.g. "XLI", "Limited", "AMG". */
+  trim?: string;
   year?: number;
   mileageKm?: number;
   transmission?: Transmission;

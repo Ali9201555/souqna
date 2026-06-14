@@ -12,6 +12,10 @@ export type PriceRange = { min?: number; max?: number };
 
 export type VehicleFilters = {
   make?: string;
+  /** Model id; only meaningful alongside a make. */
+  model?: string;
+  /** Free-text trim, matched case-insensitively as a substring. */
+  trim?: string;
   yearMin?: number;
   mileageMax?: number;
   transmission?: Transmission;
@@ -44,6 +48,11 @@ export function matchesVehicleFilters(listing: Listing, f: VehicleFilters): bool
   const a = listing.attributes;
   const v = a?.kind === 'vehicle' ? a : undefined;
   if (f.make != null && v?.make !== f.make) return false;
+  if (f.model != null && v?.model !== f.model) return false;
+  if (f.trim != null && f.trim.trim() !== '') {
+    const needle = f.trim.trim().toLowerCase();
+    if (!(v?.trim ?? '').toLowerCase().includes(needle)) return false;
+  }
   if (f.yearMin != null && (v?.year == null || v.year < f.yearMin)) return false;
   if (f.mileageMax != null && (v?.mileageKm == null || v.mileageKm > f.mileageMax)) return false;
   if (f.transmission != null && v?.transmission !== f.transmission) return false;

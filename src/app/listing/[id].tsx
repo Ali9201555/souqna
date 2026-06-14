@@ -37,7 +37,7 @@ import { BottomTabInset, Motion, Radius, Shadow, Spacing } from '@/constants/the
 import { getCategory } from '@/data/categories';
 import { getGovernorate } from '@/data/governorates';
 import { useListings } from '@/data/ListingsProvider';
-import { getVehicleMake } from '@/data/vehicle-makes';
+import { getVehicleMake, getVehicleModel } from '@/data/vehicle-makes';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
@@ -292,7 +292,18 @@ export default function ListingDetailScreen() {
                     <DetailRow icon="car-sport-outline" label={t('attr_vehicle_make')} value={getVehicleMake(listing.attributes.make)?.name[lang] ?? listing.attributes.make} />
                   )}
                   {listing.attributes.model != null && (
-                    <DetailRow icon="ribbon-outline" label={t('attr_vehicle_model')} value={listing.attributes.model} />
+                    <DetailRow
+                      icon="ribbon-outline"
+                      label={t('attr_vehicle_model')}
+                      value={
+                        (listing.attributes.make
+                          ? getVehicleModel(listing.attributes.make, listing.attributes.model)
+                          : undefined)?.[lang === 'en' ? 'en' : 'ar'] ?? listing.attributes.model
+                      }
+                    />
+                  )}
+                  {listing.attributes.trim != null && (
+                    <DetailRow icon="options-outline" label={t('attr_vehicle_trim')} value={listing.attributes.trim} />
                   )}
                   {listing.attributes.year != null && (
                     <DetailRow icon="calendar-outline" label={t('attr_vehicle_year')} value={String(listing.attributes.year)} />

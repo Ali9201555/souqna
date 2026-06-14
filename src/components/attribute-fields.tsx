@@ -6,7 +6,7 @@ import { PickerSheet, type PickerOption } from '@/components/picker-sheet';
 import { PressableScale } from '@/components/pressable-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { VEHICLE_MAKES, getVehicleMake } from '@/data/vehicle-makes';
+import { VEHICLE_MAKES, getModelsForMake, getVehicleMake, getVehicleModel, modelLabel } from '@/data/vehicle-makes';
 import { useTheme } from '@/hooks/use-theme';
 import { useI18n } from '@/i18n/LanguageProvider';
 import { DEAL_TYPE_LABEL, FUEL_LABEL, PROPERTY_TYPE_LABEL, TRANSMISSION_LABEL } from '@/lib/attribute-labels';
@@ -42,14 +42,49 @@ export function AttributeFields({
   return null;
 }
 
+const MODEL_OTHER = '__other__';
+
 function VehicleFields({ value, onChange }: { value: VehicleAttributes; onChange: (next: VehicleAttributes) => void }) {
   const { t, lang, isRTL } = useI18n();
   const [showMake, setShowMake] = useState(false);
+  const [showModel, setShowModel] = useState(false);
   const [showFuel, setShowFuel] = useState(false);
   const align = isRTL ? 'right' : 'left';
 
   const makeOptions: PickerOption[] = VEHICLE_MAKES.map((m) => ({ id: m.id, label: m.name[lang] }));
   const fuelOptions: PickerOption[] = (Object.keys(FUEL_LABEL) as FuelType[]).map((f) => ({ id: f, label: t(FUEL_LABEL[f]) }));
+
+  const models = getModelsForMake(value.make);
+  const modelOptions: PickerOption[] = [
+    ...models.map((m) => ({ id: m.id, label: modelLabel(m, lang) })),
+    { id: MODEL_OTHER, label: t('attr_model_other') },
+  ];
+  // A listed model resolves to a known entry; anything else (incl. free text)
+  // is treated as a custom model and edited as text.
+  const known = value.make && value.model ? getVehicleModel(value.make, value.model) : undefined;
+  const [customModel, setCustomModel] = useState(Boolean(value.model && !known));
+  const isCustom = customModel || (value.model != null && !known);
+
+  const selectMake = (id: string | null) => {
+    setCustomModel(false);
+    // Changing make invalidates the model — clear it.
+    onChange({ ...value, make: id ?? undefined, model: undefined });
+  };
+  const selectModel = (id: string | null) => {
+    if (id === MODEL_OTHER) {
+      setCustomModel(true);
+      onChange({ ...value, model: undefined });
+    } else {
+      setCustomModel(false);
+      onChange({ ...value, model: id ?? undefined });
+    }
+  };
+
+  const modelButtonLabel = isCustom
+    ? t('attr_model_other')
+    : known
+      ? modelLabel(known, lang)
+      : t('sell_choose');
 
   return (
     <>
@@ -61,10 +96,24 @@ function VehicleFields({ value, onChange }: { value: VehicleAttributes; onChange
       </Labeled>
 
       <Labeled label={t('attr_vehicle_model')} align={align}>
+        {value.make && models.length > 0 ? (
+          <SelectRow label={modelButtonLabel} onPress={() => setShowModel(true)} />
+        ) : null}
+        {(!value.make || models.length === 0 || isCustom) && (
+          <FocusInput
+            value={value.model ?? ''}
+            onChangeText={(v) => onChange({ ...value, model: v || undefined })}
+            placeholder={t('attr_ph_model')}
+            style={{ textAlign: align }}
+          />
+        )}
+      </Labeled>
+
+      <Labeled label={t('attr_vehicle_trim')} align={align}>
         <FocusInput
-          value={value.model ?? ''}
-          onChangeText={(v) => onChange({ ...value, model: v || undefined })}
-          placeholder={t('attr_ph_model')}
+          value={value.trim ?? ''}
+          onChangeText={(v) => onChange({ ...value, trim: v || undefined })}
+          placeholder={t('attr_ph_trim')}
           style={{ textAlign: align }}
         />
       </Labeled>
@@ -113,8 +162,16 @@ function VehicleFields({ value, onChange }: { value: VehicleAttributes; onChange
         title={t('attr_vehicle_make')}
         options={makeOptions}
         selectedId={value.make ?? null}
-        onSelect={(id) => onChange({ ...value, make: id ?? undefined })}
+        onSelect={selectMake}
         onClose={() => setShowMake(false)}
+      />
+      <PickerSheet
+        visible={showModel}
+        title={t('attr_vehicle_model')}
+        options={modelOptions}
+        selectedId={isCustom ? MODEL_OTHER : (value.model ?? null)}
+        onSelect={selectModel}
+        onClose={() => setShowModel(false)}
       />
       <PickerSheet
         visible={showFuel}

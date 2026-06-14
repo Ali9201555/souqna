@@ -29,7 +29,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'سيارة بحالة ممتازة، ماشية 78 ألف كم، فحص كامل، صبغ وكالة. السعر قابل للتفاوض البسيط.',
     priceIqd: 18_500_000, negotiable: true, categoryId: 'vehicles', governorateId: 'baghdad',
     condition: 'used', images: img('corolla', 3), sellerId: 's1', createdAt: mins(35),
-    attributes: { kind: 'vehicle', make: 'toyota', model: 'كورولا XLI', year: 2019, mileageKm: 78_000, transmission: 'automatic', fuel: 'gasoline' },
+    attributes: { kind: 'vehicle', make: 'toyota', model: 'corolla', trim: 'XLI', year: 2019, mileageKm: 78_000, transmission: 'automatic', fuel: 'gasoline' },
   },
   {
     id: 'l2',
@@ -124,7 +124,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'ماشية 42 ألف، بصمة وفتحة سقف وشاشة كبيرة. فحص أمامي كامل، بدون حوادث.',
     priceIqd: 32_000_000, negotiable: true, categoryId: 'vehicles', governorateId: 'erbil',
     condition: 'used', images: img('sportage', 3), sellerId: 's4', createdAt: hrs(5),
-    attributes: { kind: 'vehicle', make: 'kia', model: 'سبورتاج', year: 2021, mileageKm: 42_000, transmission: 'automatic', fuel: 'gasoline' },
+    attributes: { kind: 'vehicle', make: 'kia', model: 'sportage', year: 2021, mileageKm: 42_000, transmission: 'automatic', fuel: 'gasoline' },
   },
   {
     id: 'l15',
@@ -140,7 +140,15 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'سيارة عائلية اقتصادية جداً بالبنزين، جير عادي، ماشية 120 ألف. سعر مناسب.',
     priceIqd: 11_000_000, negotiable: true, categoryId: 'vehicles', governorateId: 'basra',
     condition: 'used', images: img('sunny', 2), sellerId: 's1', createdAt: days(2),
-    attributes: { kind: 'vehicle', make: 'nissan', model: 'صني', year: 2017, mileageKm: 120_000, transmission: 'manual', fuel: 'gasoline' },
+    attributes: { kind: 'vehicle', make: 'nissan', model: 'sunny', year: 2017, mileageKm: 120_000, transmission: 'manual', fuel: 'gasoline' },
+  },
+  {
+    id: 'l17',
+    title: 'تويوتا كورولا 2021 SE فل',
+    description: 'كورولا فئة SE، ماشية 30 ألف فقط، حالة الوكالة، صبغ كامل أصلي. أقساط متاحة.',
+    priceIqd: 24_000_000, negotiable: true, categoryId: 'vehicles', governorateId: 'baghdad',
+    condition: 'used', images: img('corolla2', 3), sellerId: 's3', createdAt: hrs(9),
+    attributes: { kind: 'vehicle', make: 'toyota', model: 'corolla', trim: 'SE', year: 2021, mileageKm: 30_000, transmission: 'automatic', fuel: 'gasoline' },
   },
 ];
 
