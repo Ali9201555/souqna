@@ -44,7 +44,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'شقة مفروشة بالكامل، طابق ثاني، قريبة من الخدمات والمولات. الإيجار شهري.',
     priceIqd: 750_000, negotiable: true, categoryId: 'realestate', governorateId: 'basra',
     condition: 'used', images: img('apartment', 3), sellerId: 's2', createdAt: hrs(7),
-    attributes: { kind: 'property', dealType: 'rent', propertyType: 'apartment', bedrooms: 3, bathrooms: 2, areaM2: 140, furnished: true },
+    attributes: { kind: 'property', dealType: 'rent', propertyType: 'apartment', bedrooms: 3, bathrooms: 2, areaM2: 140, furnished: true, currency: 'IQD', yearBuilt: 2016, utilities: { gridHoursPerDay: 8, generatorAmps: 5, generatorIncluded: true, water: 'municipal', internet: 'fiber', parkingSpaces: 1 }, amenities: ['ac', 'elevator', 'parking', 'kitchen'] },
   },
   {
     id: 'l4',
@@ -116,7 +116,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'دار طابقين، 4 غرف نوم، 3 صحيات، مطبخ حديث. قريبة من شارع الربيعي. طابو صرف.',
     priceIqd: 650_000_000, negotiable: true, categoryId: 'realestate', governorateId: 'baghdad',
     condition: 'used', images: img('house', 4), sellerId: 's3', createdAt: hrs(2),
-    attributes: { kind: 'property', dealType: 'sale', propertyType: 'house', bedrooms: 4, bathrooms: 3, areaM2: 150, furnished: false },
+    attributes: { kind: 'property', dealType: 'sale', propertyType: 'house', bedrooms: 4, bathrooms: 3, areaM2: 150, furnished: false, currency: 'USD', priceUsd: 445_000, yearBuilt: 2015, utilities: { gridHoursPerDay: 12, generatorAmps: 10, water: 'mixed', waterFiltered: true, internet: 'fiber', parkingSpaces: 2 }, amenities: ['garden', 'roof', 'storage', 'solar', 'kitchen'] },
   },
   {
     id: 'l14',
@@ -132,7 +132,7 @@ export const SEED_LISTINGS: Listing[] = [
     description: 'شقة طابق خامس مع مصعد وكراج، إطلالة جميلة، مجمع فيه حراسة وخدمات كاملة.',
     priceIqd: 180_000_000, negotiable: false, categoryId: 'realestate', governorateId: 'erbil',
     condition: 'new', images: img('ankawa', 3), sellerId: 's2', createdAt: days(1),
-    attributes: { kind: 'property', dealType: 'sale', propertyType: 'apartment', bedrooms: 2, bathrooms: 2, areaM2: 120, furnished: false },
+    attributes: { kind: 'property', dealType: 'sale', propertyType: 'apartment', bedrooms: 2, bathrooms: 2, areaM2: 120, furnished: false, currency: 'USD', priceUsd: 123_000, yearBuilt: 2021, utilities: { gridHoursPerDay: 20, generatorAmps: 15, water: 'municipal', internet: 'fiber', securityGuard: true, cctv: true, gated: true, parkingSpaces: 1 }, amenities: ['elevator', 'parking', 'pool', 'ac', 'balcony'] },
   },
   {
     id: 'l16',

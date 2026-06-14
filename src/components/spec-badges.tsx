@@ -44,6 +44,8 @@ export function specBadgesFor(listing: Listing, t: Translate, lang: Language): B
   if (a?.kind === 'property') {
     const out: Badge[] = [{ icon: 'pricetag-outline', label: t(DEAL_TYPE_SHORT[a.dealType]) }];
     if (a.bedrooms != null) out.push({ icon: 'bed-outline', label: t('fact_beds', { count: a.bedrooms }) });
+    // Surface the utilities wedge on the card: generator amps are what Iraqis scan for.
+    if (a.utilities?.generatorAmps != null) out.push({ icon: 'battery-charging-outline', label: t('util_amps', { count: a.utilities.generatorAmps }) });
     if (a.bathrooms != null) out.push({ icon: 'water-outline', label: String(a.bathrooms) });
     if (a.areaM2 != null) out.push({ icon: 'resize-outline', label: `${groupThousands(a.areaM2)} ${t('unit_m2')}` });
     return out;
